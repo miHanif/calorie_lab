@@ -1,0 +1,4 @@
+*.bak
+*.log
+Thumbs.db
+koneksi.php
