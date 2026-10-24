@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $q->execute([round($bmi, 2)]);
         $kat = $q->fetch();
 
-        // 2. Kebutuhan kalori (rumus Mifflin-St Jeor) lalu sesuaikan dengan kategori
+        // 2. Kebutuhan kalori (rumus Mifflin-St Jeor)
         $bmr  = 10 * $berat + 6.25 * $tinggi - 5 * $usia + ($jk === 'L' ? 5 : -161);
         $tdee = $bmr * $aktif;
         $penyesuaian = ['kurus' => 300, 'normal' => 0, 'gemuk' => -300, 'obesitas' => -500];
@@ -86,7 +86,7 @@ include 'header.php';
       <div class="hasil">
         <small>BMI kamu</small>
         <div class="angka-besar"><?= h(number_format($hasil['bmi'], 1, ',', '.')) ?></div>
-        <span class="badge" style="background:<?= h($hasil['kat']['warna']) ?>"><?= h($hasil['kat']['nama']) ?></span>
+        <span class="badge kategori-<?= h($hasil['kat']['kode']) ?>"><?= h($hasil['kat']['nama']) ?></span>
         <p style="margin-top:14px"><?= h($hasil['kat']['saran']) ?></p>
         <hr>
         <small>Target kalori harian</small>

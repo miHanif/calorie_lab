@@ -1,5 +1,7 @@
 SET NAMES utf8mb4;
 
+DROP TABLE IF EXISTS menu_harian_item;
+DROP TABLE IF EXISTS menu_harian;
 DROP TABLE IF EXISTS catatan_makan, favorit, riwayat_bmi, menu_kategori, menu_diet, kategori_bmi, users;
 
 CREATE TABLE users (
@@ -102,3 +104,55 @@ INSERT INTO menu_kategori (menu_id, kategori_id) VALUES
 (12,1),(12,2),(13,1),(13,2),(14,2),(14,3),(14,4),(15,3),(15,4),(16,3),(16,4);
 
 ALTER TABLE riwayat_bmi ADD target_kalori INT NULL;
+
+CREATE TABLE rencana_diet (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  user_id       INT NOT NULL,
+  tujuan        ENUM('turun','naik','pertahankan') NOT NULL,
+  berat_awal    DECIMAL(5,1) NOT NULL,
+  berat_target  DECIMAL(5,1) NOT NULL,
+  tinggi_cm     DECIMAL(5,1) NOT NULL,
+  usia          TINYINT UNSIGNED NOT NULL,
+  jenis_kelamin ENUM('L','P') NOT NULL,
+  aktivitas     DECIMAL(4,3) NOT NULL,
+  tanggal_mulai DATE NOT NULL,
+  durasi_hari   INT NOT NULL,
+  target_kalori INT NOT NULL,
+  status        ENUM('aktif','selesai','batal') NOT NULL DEFAULT 'aktif',
+  created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE catatan_berat (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  user_id    INT NOT NULL,
+  rencana_id INT NULL,
+  berat_kg   DECIMAL(5,1) NOT NULL,
+  tanggal    DATE NOT NULL,
+  catatan    VARCHAR(255) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id)    REFERENCES users(id)        ON DELETE CASCADE,
+  FOREIGN KEY (rencana_id) REFERENCES rencana_diet(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE menu_harian (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  user_id    INT NOT NULL,
+  tanggal    DATE NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_menu_harian_user_tanggal (user_id, tanggal),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE menu_harian_item (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  menu_harian_id   INT NOT NULL,
+  menu_id          INT NOT NULL,
+  urutan           TINYINT UNSIGNED NOT NULL,
+  catatan_makan_id INT NULL,
+  UNIQUE KEY uq_menu_harian_item_urutan (menu_harian_id, urutan),
+  UNIQUE KEY uq_menu_harian_item_catatan (catatan_makan_id),
+  FOREIGN KEY (menu_harian_id) REFERENCES menu_harian(id) ON DELETE CASCADE,
+  FOREIGN KEY (menu_id) REFERENCES menu_diet(id) ON DELETE CASCADE,
+  FOREIGN KEY (catatan_makan_id) REFERENCES catatan_makan(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
