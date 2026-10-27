@@ -1,22 +1,25 @@
 <?php
 require_once 'koneksi.php';
 wajib_login();
-date_default_timezone_set('Asia/Jakarta');
 
-function rp($n) { return 'Rp' . number_format($n, 0, ',', '.'); }
+if (!function_exists('rp')) {
+    function rp($n) { return 'Rp' . number_format($n, 0, ',', '.'); }
+}
 
-function cari_menu($pdo, $kid, $waktu, $harga, $veg, $acak = false) {
-    $sql = 'SELECT m.* FROM menu_diet m
-            JOIN menu_kategori mk ON mk.menu_id = m.id
-            WHERE mk.kategori_id = ?';
-    $param = [$kid];
-    if ($waktu !== '') { $sql .= ' AND m.waktu_makan = ?'; $param[] = $waktu; }
-    if ($harga > 0)    { $sql .= ' AND m.harga <= ?';      $param[] = $harga; }
-    if ($veg)          { $sql .= ' AND m.vegetarian = 1'; }
-    $sql .= $acak ? ' ORDER BY RAND() LIMIT 1' : ' ORDER BY m.waktu_makan, m.kalori';
-    $q = $pdo->prepare($sql);
-    $q->execute($param);
-    return $q->fetchAll();
+if (!function_exists('cari_menu')) {
+    function cari_menu($pdo, $kid, $waktu, $harga, $veg, $acak = false) {
+        $sql = 'SELECT m.* FROM menu_diet m
+                JOIN menu_kategori mk ON mk.menu_id = m.id
+                WHERE mk.kategori_id = ?';
+        $param = [$kid];
+        if ($waktu !== '') { $sql .= ' AND m.waktu_makan = ?'; $param[] = $waktu; }
+        if ($harga > 0)    { $sql .= ' AND m.harga <= ?';      $param[] = $harga; }
+        if ($veg)          { $sql .= ' AND m.vegetarian = 1'; }
+        $sql .= $acak ? ' ORDER BY RAND() LIMIT 1' : ' ORDER BY m.waktu_makan, m.kalori';
+        $q = $pdo->prepare($sql);
+        $q->execute($param);
+        return $q->fetchAll();
+    }
 }
 
 $q = $pdo->prepare('SELECT r.*, k.nama AS kat_nama, k.kode AS kat_kode
@@ -33,46 +36,57 @@ if ($rencana && $terakhir) $terakhir['target_kalori'] = $rencana['target_kalori'
 $daftar_waktu = ['pagi', 'siang', 'malam', 'camilan'];
 $bulan = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
           'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
 $filter = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'simpan_menu_harian' ? $_POST : $_GET;
-$waktu = in_array($filter['waktu'] ?? '', $daftar_waktu, true) ? $filter['waktu'] : '';
-$harga = max(0, (int)($filter['harga'] ?? 0));
-$veg   = isset($filter['veg']) && $filter['veg'] === '1';
+$waktu  = in_array($filter['waktu'] ?? '', $daftar_waktu, true) ? $filter['waktu'] : '';
+$harga  = max(0, (int)($filter['harga'] ?? 0));
+$veg    = isset($filter['veg']) && $filter['veg'] === '1';
 $budget = max(0, (int)($filter['budget'] ?? 0));
 $hari_ini = date('Y-m-d');
-$csrf_token = $_SESSION['csrf_token_menu_harian'] ?? bin2hex(random_bytes(32));
-$_SESSION['csrf_token_menu_harian'] = $csrf_token;
+
+$csrf_token = csrf_token('csrf_token_menu_harian');
 
 $error_menu_harian = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'catat_dimakan') {
     $token = $_POST['csrf_token'] ?? '';
     $item_id = (int)($_POST['item_id'] ?? 0);
     $porsi_dimakan = (float)($_POST['porsi'] ?? 1);
-    if (!is_string($token) || !hash_equals($csrf_token, $token)) {
+
+    if (!csrf_valid($token, 'csrf_token_menu_harian')) {
         $_SESSION['pesan_menu_harian'] = 'Sesi formulir kedaluwarsa. Muat ulang halaman lalu coba lagi.';
         $_SESSION['pesan_menu_harian_tipe'] = 'error';
+        $item_tanggal = $hari_ini;
     } elseif (!in_array($porsi_dimakan, [0.5, 1.0, 1.5, 2.0], true)) {
         $_SESSION['pesan_menu_harian'] = 'Jumlah porsi tidak valid. Pilih jumlah porsi yang tersedia.';
         $_SESSION['pesan_menu_harian_tipe'] = 'error';
+        $item_tanggal = $hari_ini;
     } else {
         $pdo->beginTransaction();
         $st = $pdo->prepare(
             'SELECT i.menu_id, i.catatan_makan_id, mh.tanggal
              FROM menu_harian_item i
              JOIN menu_harian mh ON mh.id = i.menu_harian_id
-             WHERE i.id = ? AND mh.user_id = ? AND mh.tanggal <= ?
+             WHERE i.id = ? AND mh.user_id = ?
              FOR UPDATE'
         );
-        $st->execute([$item_id, $_SESSION['user_id'], $hari_ini]);
+        $st->execute([$item_id, $_SESSION['user_id']]);
         $item = $st->fetch();
 
         if (!$item) {
             $pdo->rollBack();
             $_SESSION['pesan_menu_harian'] = 'Menu tidak ditemukan di rencana harian akunmu.';
             $_SESSION['pesan_menu_harian_tipe'] = 'error';
+            $item_tanggal = $hari_ini;
+        } elseif ($item['tanggal'] > $hari_ini) {
+            $pdo->rollBack();
+            $_SESSION['pesan_menu_harian'] = 'Menu pada rencana tanggal mendatang belum dapat dicatat sebagai makanan yang telah dikonsumsi.';
+            $_SESSION['pesan_menu_harian_tipe'] = 'error';
+            $item_tanggal = $item['tanggal'];
         } elseif ($item['catatan_makan_id'] !== null) {
             $pdo->commit();
             $_SESSION['pesan_menu_harian'] = 'Menu tersebut sudah tercatat sebagai makanan.';
             $_SESSION['pesan_menu_harian_tipe'] = 'sukses';
+            $item_tanggal = $item['tanggal'];
         } else {
             $st = $pdo->prepare('INSERT INTO catatan_makan (user_id, menu_id, porsi, tanggal) VALUES (?, ?, ?, ?)');
             $st->execute([$_SESSION['user_id'], $item['menu_id'], $porsi_dimakan, $item['tanggal']]);
@@ -82,23 +96,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'catat_d
             $pdo->commit();
             $_SESSION['pesan_menu_harian'] = 'Menu tercatat di Catatan Kalori sebagai makanan yang kamu konsumsi.';
             $_SESSION['pesan_menu_harian_tipe'] = 'sukses';
+            $item_tanggal = $item['tanggal'];
         }
     }
 
-    header('Location: menu.php#riwayat-menu');
+    $anchor = ($item_tanggal === $hari_ini) ? '' : '#riwayat-menu';
+    header('Location: menu.php' . $anchor);
+    exit;
+}
+
+// ── Batalkan menu harian hari ini ─────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'hapus_menu_harian') {
+    $token = $_POST['csrf_token'] ?? '';
+    if (!csrf_valid($token, 'csrf_token_menu_harian')) {
+        $_SESSION['pesan_menu_harian']      = 'Sesi formulir kedaluwarsa. Muat ulang halaman lalu coba lagi.';
+        $_SESSION['pesan_menu_harian_tipe'] = 'error';
+    } else {
+        // Hanya boleh hapus menu hari ini yang belum ada item dicatat
+        $st = $pdo->prepare(
+            'SELECT mh.id FROM menu_harian mh
+             WHERE mh.user_id = ? AND mh.tanggal = ?'
+        );
+        $st->execute([$_SESSION['user_id'], $hari_ini]);
+        $mh_id_hapus = $st->fetchColumn();
+
+        if ($mh_id_hapus) {
+            // Cek apakah ada item yang sudah dicatat ke catatan_makan
+            $st = $pdo->prepare(
+                'SELECT COUNT(*) FROM menu_harian_item WHERE menu_harian_id = ? AND catatan_makan_id IS NOT NULL'
+            );
+            $st->execute([$mh_id_hapus]);
+            $ada_tercatat = (int)$st->fetchColumn();
+
+            if ($ada_tercatat > 0) {
+                $_SESSION['pesan_menu_harian']      = 'Menu tidak dapat dibatalkan karena sebagian sudah dicatat sebagai makanan yang dikonsumsi.';
+                $_SESSION['pesan_menu_harian_tipe'] = 'error';
+            } else {
+                // Hapus item dan rencana harian (CASCADE jika tidak, hapus manual)
+                $pdo->prepare('DELETE FROM menu_harian_item WHERE menu_harian_id = ?')->execute([$mh_id_hapus]);
+                $pdo->prepare('DELETE FROM menu_harian WHERE id = ?')->execute([$mh_id_hapus]);
+                $_SESSION['pesan_menu_harian']      = 'Menu harian hari ini berhasil dibatalkan.';
+                $_SESSION['pesan_menu_harian_tipe'] = 'sukses';
+            }
+        } else {
+            $_SESSION['pesan_menu_harian']      = 'Tidak ada menu harian hari ini yang dapat dibatalkan.';
+            $_SESSION['pesan_menu_harian_tipe'] = 'error';
+        }
+    }
+    header('Location: menu.php');
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'simpan_menu_harian') {
     $token = $_POST['csrf_token'] ?? '';
-    if (!is_string($token) || !hash_equals($csrf_token, $token)) {
+    if (!csrf_valid($token, 'csrf_token_menu_harian')) {
         $error_menu_harian = 'Sesi formulir kedaluwarsa. Muat ulang halaman lalu coba lagi.';
     } elseif (!$terakhir) {
         $error_menu_harian = 'Hitung BMI terlebih dahulu sebelum membuat menu harian.';
     } else {
-        $harga_post = max(0, (int)($_POST['harga'] ?? 0));
+        $harga_post  = max(0, (int)($_POST['harga'] ?? 0));
         $budget_post = max(0, (int)($_POST['budget'] ?? 0));
-        $veg_post = ($_POST['veg'] ?? '') === '1';
+        $veg_post    = ($_POST['veg'] ?? '') === '1';
+
         $kandidat = [];
         foreach ($daftar_waktu as $w) {
             $daftar = cari_menu($pdo, (int)$terakhir['kategori_id'], $w, $harga_post, $veg_post);
@@ -108,28 +167,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'simpan_
         }
 
         $menu_baru = [];
-        for ($i = 0; $i < 300 && $kandidat; $i++) {
-            $kombinasi = [];
-            foreach ($kandidat as $daftar) {
-                $kombinasi[] = $daftar[array_rand($daftar)];
+        if ($kandidat) {
+            for ($i = 0; $i < 300; $i++) {
+                $kombinasi = [];
+                foreach ($kandidat as $daftar) {
+                    $kombinasi[] = $daftar[array_rand($daftar)];
+                }
+                $total_harga = array_sum(array_column($kombinasi, 'harga'));
+                if ($budget_post === 0 || $total_harga <= $budget_post) {
+                    $menu_baru = $kombinasi;
+                    break;
+                }
             }
-            $total_harga = array_sum(array_column($kombinasi, 'harga'));
-            if ($budget_post === 0 || $total_harga <= $budget_post) {
-                $menu_baru = $kombinasi;
-                break;
+
+            // Fallback deterministik: jika sampling acak belum dapat kombinasi di bawah budget,
+            // uji kombinasi termurah dari setiap kelompok waktu makan.
+            if (!$menu_baru) {
+                $termurah = [];
+                foreach ($kandidat as $daftar) {
+                    usort($daftar, fn($a, $b) => $a['harga'] <=> $b['harga']);
+                    $termurah[] = $daftar[0];
+                }
+                if ($budget_post === 0 || array_sum(array_column($termurah, 'harga')) <= $budget_post) {
+                    $menu_baru = $termurah;
+                }
             }
         }
 
         if (!$menu_baru) {
-            $error_menu_harian = 'Belum ada kombinasi menu yang cocok dengan filter dan budget. Coba longgarkan filter atau naikkan budget.';
+            $error_menu_harian = 'Belum ada kombinasi menu yang cocok dengan filter dan budget. Coba longgarkan batas harga atau naikkan budget.';
         } else {
             $pdo->beginTransaction();
-            $simpan_rencana = $pdo->prepare(
-                'INSERT INTO menu_harian (user_id, tanggal) VALUES (?, ?)
-                 ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)'
-            );
-            $simpan_rencana->execute([$_SESSION['user_id'], $hari_ini]);
-            $menu_harian_id = (int)$pdo->lastInsertId();
+            $st = $pdo->prepare('SELECT id FROM menu_harian WHERE user_id = ? AND tanggal = ? FOR UPDATE');
+            $st->execute([$_SESSION['user_id'], $hari_ini]);
+            $menu_harian_id = (int)$st->fetchColumn();
+
+            if ($menu_harian_id) {
+                $st_cek = $pdo->prepare('SELECT COUNT(*) FROM menu_harian_item WHERE menu_harian_id = ? AND catatan_makan_id IS NOT NULL');
+                $st_cek->execute([$menu_harian_id]);
+                if ((int)$st_cek->fetchColumn() > 0) {
+                    $pdo->rollBack();
+                    $_SESSION['pesan_menu_harian'] = 'Kombinasi menu tidak dapat diubah karena sebagian menu hari ini sudah dicatat sebagai makanan yang dikonsumsi.';
+                    $_SESSION['pesan_menu_harian_tipe'] = 'error';
+                    header('Location: menu.php');
+                    exit;
+                }
+            } else {
+                $simpan_rencana = $pdo->prepare('INSERT INTO menu_harian (user_id, tanggal) VALUES (?, ?)');
+                $simpan_rencana->execute([$_SESSION['user_id'], $hari_ini]);
+                $menu_harian_id = (int)$pdo->lastInsertId();
+            }
 
             $pdo->prepare('DELETE FROM menu_harian_item WHERE menu_harian_id = ?')->execute([$menu_harian_id]);
             $simpan_item = $pdo->prepare(
@@ -143,6 +230,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'simpan_
             $_SESSION['pesan_menu_harian'] = 'Menu harian tersimpan. Menu ini tetap tersedia saat kamu kembali ke halaman rekomendasi.';
             $_SESSION['pesan_menu_harian_tipe'] = 'sukses';
             $params = ['hari_ini' => 1, 'harga' => $harga_post, 'budget' => $budget_post];
+            if (!empty($_POST['waktu'])) {
+                $params['waktu'] = $_POST['waktu'];
+            }
             if ($veg_post) {
                 $params['veg'] = 1;
             }
@@ -159,6 +249,7 @@ $pesan_menu_harian = $_SESSION['pesan_menu_harian'] ?? '';
 $pesan_menu_harian_tipe = $_SESSION['pesan_menu_harian_tipe'] ?? 'sukses';
 unset($_SESSION['pesan_menu_harian']);
 unset($_SESSION['pesan_menu_harian_tipe']);
+
 $st = $pdo->prepare('SELECT id FROM menu_harian WHERE user_id = ? AND tanggal = ?');
 $st->execute([$_SESSION['user_id'], $hari_ini]);
 $menu_harian_id = $st->fetchColumn();
@@ -177,9 +268,9 @@ $st = $pdo->prepare(
      FROM (
          SELECT id, user_id, tanggal
          FROM menu_harian
-         WHERE user_id = ? AND tanggal < ?
+         WHERE user_id = ? AND tanggal <> ?
          ORDER BY tanggal DESC
-         LIMIT 14
+         LIMIT 35
      ) mh
      JOIN menu_harian_item i ON i.menu_harian_id = mh.id
      JOIN menu_diet m ON m.id = i.menu_id
@@ -203,9 +294,29 @@ foreach ($st->fetchAll() as $item) {
 }
 
 if ($terakhir) {
-    $kid = $terakhir['kategori_id'];
+    $kid = (int)$terakhir['kategori_id'];
     $menu = cari_menu($pdo, $kid, $waktu, $harga, $veg);
 }
+
+$ikon_waktu = [
+    'pagi'    => '🌅',
+    'siang'   => '☀️',
+    'malam'   => '🌙',
+    'camilan' => '🍎',
+];
+
+$tampilan = $_GET['tampilan'] ?? 'grid';
+if (!in_array($tampilan, ['grid', 'list'], true)) {
+    $tampilan = 'grid';
+}
+
+// Paginasi tampilan daftar menu (10 per halaman)
+$halaman    = max(1, (int)($_GET['hal'] ?? 1));
+$per_hal    = 10;
+$total_menu = count($menu);
+$total_hal  = (int)ceil($total_menu / $per_hal);
+$halaman    = min($halaman, max(1, $total_hal));
+$menu_tampil = array_slice($menu, ($halaman - 1) * $per_hal, $per_hal);
 
 $judul = 'Menu Rekomendasi';
 include 'header.php';
@@ -227,6 +338,7 @@ include 'header.php';
   </p>
 
   <form method="get" class="filter-bar">
+    <input type="hidden" name="tampilan" value="<?= h($tampilan) ?>">
     <div>
       <label for="waktu">Waktu makan</label>
       <select id="waktu" name="waktu">
@@ -237,21 +349,20 @@ include 'header.php';
       </select>
     </div>
     <div>
-
       <label for="harga">Harga maks. per menu</label>
       <select id="harga" name="harga">
         <option value="0">Bebas</option>
-        <?php foreach ([8000, 10000, 15000, 20000] as $hg): ?>
+        <?php foreach ([8000, 10000, 13000, 15000, 18000, 20000, 25000] as $hg): ?>
           <option value="<?= $hg ?>" <?= $harga === $hg ? 'selected' : '' ?>><?= rp($hg) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
 
     <div>
-      <label for="budget">Budget sehari</label>
+      <label for="budget" title="Digunakan sebagai batas maksimal saat membuat menu harian">Budget menu sehari <small class="teks-redup">(rencana)</small></label>
       <select id="budget" name="budget">
         <option value="0">Bebas</option>
-        <?php foreach ([35000, 40000, 50000] as $b): ?>
+        <?php foreach ([30000, 40000, 50000, 60000, 75000, 90000] as $b): ?>
           <option value="<?= $b ?>" <?= $budget === $b ? 'selected' : '' ?>><?= rp($b) ?></option>
         <?php endforeach; ?>
       </select>
@@ -275,7 +386,7 @@ include 'header.php';
   <?php if ($menu_hari):
       $total_kal = array_sum(array_column($menu_hari, 'kalori'));
       $total_hrg = array_sum(array_column($menu_hari, 'harga')); ?>
-    <div class="menu-hari">
+    <div class="menu-hari" id="menu-hari">
       <div class="menu-hari-heading">
         <div>
           <small>TERSIMPAN UNTUK HARI INI · <?= h(date('d-m-Y', strtotime($hari_ini))) ?></small>
@@ -311,15 +422,37 @@ include 'header.php';
       </ul>
       <b>Total <?= number_format($total_kal, 0, ',', '.') ?> kkal &middot; <?= rp($total_hrg) ?></b>
       <p class="catatan">Target harianmu <?= number_format((int)$terakhir['target_kalori'], 0, ',', '.') ?> kkal. Rencana ini tidak otomatis masuk ke catatan makanan.</p>
-      <form method="post" class="buat-menu-harian">
-        <input type="hidden" name="aksi" value="simpan_menu_harian">
-        <input type="hidden" name="csrf_token" value="<?= h($csrf_token) ?>">
-        <input type="hidden" name="waktu" value="<?= h($waktu) ?>">
-        <input type="hidden" name="harga" value="<?= $harga ?>">
-        <input type="hidden" name="budget" value="<?= $budget ?>">
-        <?php if ($veg): ?><input type="hidden" name="veg" value="1"><?php endif; ?>
-        <button type="submit" class="tombol kuning">Buat kombinasi lain</button>
-      </form>
+      <?php
+      $ada_tercatat_hari_ini = false;
+      foreach ($menu_hari as $m) {
+          if ($m['catatan_makan_id'] !== null) {
+              $ada_tercatat_hari_ini = true;
+              break;
+          }
+      }
+      ?>
+      <?php if ($ada_tercatat_hari_ini): ?>
+        <p class="catatan" style="margin-top:10px;color:var(--teks-redup)">
+          <em>Sebagian menu hari ini telah dicatat ke Catatan Kalori, sehingga rencana menu hari ini dikunci agar riwayat makanan tetap akurat.</em>
+        </p>
+      <?php else: ?>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">
+          <form method="post" class="buat-menu-harian">
+            <input type="hidden" name="aksi" value="simpan_menu_harian">
+            <input type="hidden" name="csrf_token" value="<?= h($csrf_token) ?>">
+            <input type="hidden" name="waktu" value="<?= h($waktu) ?>">
+            <input type="hidden" name="harga" value="<?= $harga ?>">
+            <input type="hidden" name="budget" value="<?= $budget ?>">
+            <?php if ($veg): ?><input type="hidden" name="veg" value="1"><?php endif; ?>
+            <button type="submit" class="tombol kuning">Buat kombinasi lain</button>
+          </form>
+          <form method="post" onsubmit="return confirm('Batalkan menu harian hari ini? Tindakan ini tidak bisa diurungkan.')">
+            <input type="hidden" name="aksi" value="hapus_menu_harian">
+            <input type="hidden" name="csrf_token" value="<?= h($csrf_token) ?>">
+            <button type="submit" class="tombol tombol-bahaya kecil">Batalkan menu harian</button>
+          </form>
+        </div>
+      <?php endif; ?>
     </div>
   <?php else: ?>
     <div class="menu-hari menu-hari-kosong">
@@ -342,8 +475,8 @@ include 'header.php';
   <section class="riwayat-menu" id="riwayat-menu" aria-labelledby="riwayat-menu-judul">
     <div class="dashboard-section-heading">
       <div>
-        <h3 id="riwayat-menu-judul">Riwayat menu harian</h3>
-        <p class="teks-redup">Menampilkan hingga 14 rencana terakhir. Catat hanya menu yang benar-benar kamu makan.</p>
+        <h3 id="riwayat-menu-judul">Rencana & riwayat menu harian</h3>
+        <p class="teks-redup">Menampilkan rencana menu tersimpan. Catat hanya menu yang benar-benar kamu makan.</p>
       </div>
     </div>
     <?php if ($riwayat_menu): ?>
@@ -366,6 +499,8 @@ include 'header.php';
                   <span><b><?= h(ucfirst($item['waktu_makan'])) ?></b>: <?= h($item['nama_menu']) ?> · <?= (int)$item['kalori'] ?> kkal</span>
                   <?php if ($item['catatan_makan_id'] !== null): ?>
                     <span class="menu-tercatat">Sudah dicatat</span>
+                  <?php elseif ($plan['tanggal'] > $hari_ini): ?>
+                    <span class="teks-redup" style="font-size:.85rem;font-weight:600">Rencana mendatang</span>
                   <?php else: ?>
                     <form method="post">
                       <input type="hidden" name="aksi" value="catat_dimakan">
@@ -387,24 +522,104 @@ include 'header.php';
         <?php endforeach; ?>
       </div>
     <?php else: ?>
-      <div class="kosong">Belum ada rencana menu dari hari sebelumnya.</div>
+      <div class="kosong">Belum ada rencana menu tersimpan lainnya.</div>
     <?php endif; ?>
   </section>
 
   <?php if ($menu): ?>
-    <div class="daftar-menu">
-      <?php foreach ($menu as $m): ?>
-        <article class="menu-kartu">
-          <small><?= h(ucfirst($m['waktu_makan'])) ?><?= $m['vegetarian'] ? ' &middot; Vegetarian' : '' ?></small>
-          <h3><?= h($m['nama_menu']) ?></h3>
-          <p><?= h($m['deskripsi']) ?></p>
-          <div class="menu-info"><b><?= (int)$m['kalori'] ?> kkal</b><span><?= rp($m['harga']) ?></span></div>
-          
-        </article>
-      <?php endforeach; ?>
+    <?php
+    $params_nav = array_filter(['waktu' => $waktu ?: null, 'harga' => $harga ?: null, 'budget' => $budget ?: null, 'veg' => $veg ? '1' : null], fn($v) => $v !== null && $v !== '');
+    ?>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <p class="teks-redup" style="margin:0">
+        Menampilkan <?= number_format(count($menu_tampil), 0, ',', '.') ?> dari <?= number_format($total_menu, 0, ',', '.') ?> menu
+        <?php if ($waktu !== ''): ?>
+          kategori <b><?= h(ucfirst($waktu)) ?></b>
+        <?php endif; ?>
+        <?php if ($total_hal > 1): ?> · Halaman <?= $halaman ?> / <?= $total_hal ?><?php endif; ?>
+      </p>
+      <div class="view-toggle" style="display:flex;gap:4px">
+        <a href="?<?= h(http_build_query($params_nav + ['tampilan' => 'grid', 'hal' => $halaman])) ?>" class="tombol kecil <?= $tampilan === 'grid' ? '' : 'tombol-sekunder' ?>" title="Tampilan Grid Menu">⊞ Grid</a>
+        <a href="?<?= h(http_build_query($params_nav + ['tampilan' => 'list', 'hal' => $halaman])) ?>" class="tombol kecil <?= $tampilan === 'list' ? '' : 'tombol-sekunder' ?>" title="Tampilan List Menu">☰ List</a>
+      </div>
     </div>
+
+    <?php if ($tampilan === 'grid'): ?>
+      <!-- Grid Menu Makanan dengan Kategori Sesuai Waktu Makan -->
+      <div class="daftar-menu">
+        <?php foreach ($menu_tampil as $m): ?>
+          <article class="menu-kartu">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px">
+              <span class="badge-waktu badge-waktu-<?= h($m['waktu_makan']) ?>">
+                <?= $ikon_waktu[$m['waktu_makan']] ?? '' ?> <?= h(ucfirst($m['waktu_makan'])) ?>
+              </span>
+              <?php if ($m['vegetarian']): ?>
+                <span class="badge kategori-normal" style="font-size:.72rem;padding:2px 8px">Vegetarian</span>
+              <?php endif; ?>
+            </div>
+            <h3><?= h($m['nama_menu']) ?></h3>
+            <p><?= h($m['deskripsi']) ?></p>
+            <div class="menu-info">
+              <b><?= (int)$m['kalori'] ?> kkal</b>
+              <span><?= rp($m['harga']) ?></span>
+            </div>
+          </article>
+        <?php endforeach; ?>
+      </div>
+    <?php else: ?>
+      <!-- List Tabel Menu Makanan -->
+      <div class="gulir">
+        <table class="tabel" style="width:100%">
+          <thead>
+            <tr>
+              <th>Kategori Waktu</th>
+              <th>Nama Menu</th>
+              <th>Deskripsi</th>
+              <th style="text-align:right">Kalori</th>
+              <th style="text-align:right">Harga</th>
+              <th>Info</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($menu_tampil as $m): ?>
+              <tr>
+                <td>
+                  <span class="badge-waktu badge-waktu-<?= h($m['waktu_makan']) ?>">
+                    <?= $ikon_waktu[$m['waktu_makan']] ?? '' ?> <?= h(ucfirst($m['waktu_makan'])) ?>
+                  </span>
+                </td>
+                <td><strong><?= h($m['nama_menu']) ?></strong></td>
+                <td class="teks-redup" style="font-size:.85em"><?= h($m['deskripsi']) ?></td>
+                <td style="text-align:right;white-space:nowrap"><?= (int)$m['kalori'] ?> kkal</td>
+                <td style="text-align:right;white-space:nowrap"><?= rp($m['harga']) ?></td>
+                <td><?= $m['vegetarian'] ? '<span class="badge kategori-normal" style="font-size:.75em">Veg</span>' : '' ?></td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    <?php endif; ?>
+
+    <?php if ($total_hal > 1): ?>
+      <nav class="paginasi" style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <?php
+        $params_nav_hal = $params_nav + ['tampilan' => $tampilan];
+        if ($halaman > 1): ?>
+          <a class="tombol tombol-sekunder kecil" href="?<?= h(http_build_query($params_nav_hal + ['hal' => $halaman - 1])) ?>">← Sebelumnya</a>
+        <?php endif;
+        $start = max(1, $halaman - 2);
+        $end   = min($total_hal, $halaman + 2);
+        for ($p = $start; $p <= $end; $p++): ?>
+          <a class="tombol <?= $p === $halaman ? '' : 'tombol-sekunder' ?> kecil" href="?<?= h(http_build_query($params_nav_hal + ['hal' => $p])) ?>"><?= $p ?></a>
+        <?php endfor;
+        if ($halaman < $total_hal): ?>
+          <a class="tombol tombol-sekunder kecil" href="?<?= h(http_build_query($params_nav_hal + ['hal' => $halaman + 1])) ?>">Berikutnya →</a>
+        <?php endif; ?>
+      </nav>
+    <?php endif; ?>
+
   <?php else: ?>
-    <div class="kosong">Tidak ada menu yang cocok. Coba longgarkan filter harga atau waktu makan.</div>
+    <div class="kosong">Tidak ada menu yang cocok. Coba longgarkan filter harga atau pilih kategori waktu makan lainnya.</div>
   <?php endif; ?>
 
   <p class="catatan">Kalori merupakan perkiraan per porsi standar dan bersifat edukatif, bukan pengganti saran ahli gizi.</p>

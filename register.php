@@ -7,18 +7,22 @@ if (isset($_SESSION['user_id'])) {
 }
 
 $error = '';
+$csrf = csrf_token('csrf_token_register');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $token = $_POST['csrf_token'] ?? '';
     $nama  = trim($_POST['nama'] ?? '');
-    $email = trim($_POST['email'] ?? '');
+    $email = strtolower(trim($_POST['email'] ?? ''));
     $pass  = $_POST['password'] ?? '';
 
-    if ($nama === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = 'Isi nama dan gunakan format email yang benar.';
-    } elseif (strlen($pass) < 6) {
-        $error = 'Kata sandi minimal 6 karakter.';
+    if (!csrf_valid($token, 'csrf_token_register')) {
+        $error = 'Sesi formulir kedaluwarsa. Silakan muat ulang halaman.';
+    } elseif (mb_strlen($nama) < 2 || mb_strlen($nama) > 100 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Isi nama lengkap yang valid (2-100 karakter) dan gunakan format email yang benar.';
+    } elseif (strlen($pass) < 6 || strlen($pass) > 72) {
+        $error = 'Kata sandi minimal 6 karakter dan maksimal 72 karakter.';
     } else {
-        $cek = $pdo->prepare('SELECT id FROM users WHERE email = ?');
+        $cek = $pdo->prepare('SELECT id FROM users WHERE LOWER(email) = ?');
         $cek->execute([$email]);
 
         if ($cek->fetch()) {
@@ -45,14 +49,16 @@ include 'header.php';
   <?php endif; ?>
 
   <form method="post">
+    <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+
     <label for="nama">Nama lengkap</label>
-    <input type="text" id="nama" name="nama" value="<?= h($_POST['nama'] ?? '') ?>" required>
+    <input type="text" id="nama" name="nama" value="<?= h($_POST['nama'] ?? '') ?>" required autofocus>
 
     <label for="email">Email</label>
     <input type="email" id="email" name="email" value="<?= h($_POST['email'] ?? '') ?>" required>
 
     <label for="password">Kata sandi</label>
-    <input type="password" id="password" name="password" minlength="6" required>
+    <input type="password" id="password" name="password" minlength="6" maxlength="72" required>
 
     <button type="submit" class="tombol penuh">Buat akun</button>
   </form>

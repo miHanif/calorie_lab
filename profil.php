@@ -1,7 +1,6 @@
 <?php
 require_once 'koneksi.php';
 wajib_login();
-date_default_timezone_set('Asia/Jakarta');
 
 $uid      = $_SESSION['user_id'];
 $hari_ini = date('Y-m-d');
@@ -10,9 +9,11 @@ $bulan = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
 $label = ['turun' => 'Menurunkan berat badan', 'naik' => 'Menaikkan berat badan',
           'pertahankan' => 'Mempertahankan berat badan'];
 
-function nf($n, $d = 0) { return number_format($n, $d, ',', '.'); }
-function tgl($s) { global $bulan; $t = strtotime($s); return date('j', $t) . ' ' . $bulan[(int)date('n', $t)] . ' ' . date('Y', $t); }
-function selisih_hari($a, $b) { return (int)(new DateTime($a))->diff(new DateTime($b))->format('%r%a'); }
+if (!function_exists('nf')) { function nf($n, $d = 0) { return number_format($n, $d, ',', '.'); } }
+if (!function_exists('tgl')) { function tgl($s) { global $bulan; $t = strtotime($s); return date('j', $t) . ' ' . $bulan[(int)date('n', $t)] . ' ' . date('Y', $t); } }
+if (!function_exists('selisih_hari')) { function selisih_hari($a, $b) { return (int)(new DateTime($a))->diff(new DateTime($b))->format('%r%a'); } }
+
+$csrf = csrf_token('csrf_token_profil');
 
 $q = $pdo->prepare('SELECT nama, email FROM users WHERE id = ?');
 $q->execute([$uid]);
@@ -28,16 +29,29 @@ unset($_SESSION['pesan']);
 
 // Catat berat
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'catat' && $aktif) {
+    $token   = $_POST['csrf_token'] ?? '';
     $berat   = (float)($_POST['berat'] ?? 0);
     $tanggal = $_POST['tanggal'] ?? '';
     $cat     = mb_substr(trim($_POST['catatan'] ?? ''), 0, 255);
-    $d = DateTime::createFromFormat('Y-m-d', $tanggal);
 
-    if (!$d || $d->format('Y-m-d') !== $tanggal || $tanggal > $hari_ini || $tanggal < $aktif['tanggal_mulai']) {
-        $error = 'Tanggal tidak valid. Pilih tanggal antara awal rencana dan hari ini.';
+    $d       = DateTime::createFromFormat('!Y-m-d', $tanggal);
+    $err_d   = DateTime::getLastErrors();
+    $format_ok = $d && $d->format('Y-m-d') === $tanggal && ($err_d === false || ($err_d['warning_count'] === 0 && $err_d['error_count'] === 0));
+
+    if (!csrf_valid($token, 'csrf_token_profil')) {
+        $error = 'Sesi formulir kedaluwarsa. Muat ulang halaman lalu coba lagi.';
+    } elseif (!$format_ok || $tanggal > $hari_ini) {
+        $error = 'Tanggal tidak valid. Kamu dapat memilih tanggal hari ini atau tanggal sebelumnya, tetapi tidak boleh melebihi hari ini (' . h(tgl($hari_ini)) . ').';
     } elseif ($berat < 20 || $berat > 250) {
         $error = 'Berat harus antara 20 dan 250 kg.';
     } else {
+        // Jika pengguna mencatat berat dengan tanggal sebelum awal rencana,
+        // perbarui tanggal_mulai rencana agar data ini menjadi titik awal (Hari ke-0)
+        if ($tanggal < $aktif['tanggal_mulai']) {
+            $pdo->prepare('UPDATE rencana_diet SET tanggal_mulai = ? WHERE id = ?')->execute([$tanggal, $aktif['id']]);
+            $aktif['tanggal_mulai'] = $tanggal;
+        }
+
         // Berat sebelumnya (untuk cek laju perubahan)
         $q = $pdo->prepare('SELECT berat_kg, tanggal FROM catatan_berat WHERE user_id = ? AND rencana_id = ? AND tanggal < ? ORDER BY tanggal DESC LIMIT 1');
         $q->execute([$uid, $aktif['id'], $tanggal]);
@@ -74,8 +88,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'catat' 
         }
 
         // Target tercapai?
+        $selesai_rencana = (new DateTime($aktif['tanggal_mulai']))->modify('+' . (int)$aktif['durasi_hari'] . ' days')->format('Y-m-d');
         $tercapai = ($aktif['tujuan'] === 'turun' && $terbaru <= $aktif['berat_target'])
-                 || ($aktif['tujuan'] === 'naik'  && $terbaru >= $aktif['berat_target']);
+                 || ($aktif['tujuan'] === 'naik'  && $terbaru >= $aktif['berat_target'])
+                 || ($aktif['tujuan'] === 'pertahankan' && $hari_ini >= $selesai_rencana && abs($terbaru - $aktif['berat_target']) <= 1.0);
 
         if ($tercapai) {
             $pdo->prepare("UPDATE rencana_diet SET status = 'selesai' WHERE id = ?")->execute([$aktif['id']]);
@@ -114,17 +130,27 @@ $q = $pdo->prepare("SELECT * FROM rencana_diet WHERE user_id = ? AND status <> '
 $q->execute([$uid]);
 $rencana_lama = $q->fetchAll();
 
-if ($aktif && $catatan) {
-    $berat_skrg = (float)end($catatan)['berat_kg'];
+$durasi = 0;
+$hari_ke = 0;
+$berat_skrg = 0;
+$status = ['Belum ada catatan timbangan', '#888'];
+$capai = 0;
+$titik = [];
+$max_grafik = 30;
+
+if ($aktif) {
     $durasi     = (int)$aktif['durasi_hari'];
     $lewat      = max(0, min($durasi, selisih_hari($aktif['tanggal_mulai'], $hari_ini)));
     $hari_ke    = min($durasi, $lewat + 1);
+    $berat_skrg = $catatan ? (float)end($catatan)['berat_kg'] : (float)$aktif['berat_awal'];
     $ideal      = $aktif['berat_awal'] + ($aktif['berat_target'] - $aktif['berat_awal']) * $lewat / $durasi;
     $beda       = $berat_skrg - $ideal;   // positif = lebih berat dari jalur ideal
     $sel_total  = $aktif['berat_target'] - $aktif['berat_awal'];
     $capai      = $sel_total != 0 ? max(0, min(100, (int)round(($berat_skrg - $aktif['berat_awal']) / $sel_total * 100))) : 0;
 
-    if ($aktif['tujuan'] === 'pertahankan') {
+    if (!$catatan) {
+        $status = ['Belum ada catatan timbangan', '#888'];
+    } elseif ($aktif['tujuan'] === 'pertahankan') {
         $status = abs($beda) <= 1 ? ['Sesuai jalur', 'var(--normal)'] : ['Menyimpang dari berat target', 'var(--gemuk)'];
     } else {
         $arah = ($aktif['tujuan'] === 'turun') ? -$beda : $beda;   // positif = lebih maju dari jalur
@@ -133,10 +159,17 @@ if ($aktif && $catatan) {
         else                   $status = ['Tertinggal dari jalur', 'var(--gemuk)'];
     }
 
-    $titik = [];
-    foreach ($catatan as $c) {
-        $titik[] = ['x' => selisih_hari($aktif['tanggal_mulai'], $c['tanggal']), 'y' => (float)$c['berat_kg']];
+    if ($catatan) {
+        foreach ($catatan as $c) {
+            $titik[] = ['x' => max(0, selisih_hari($aktif['tanggal_mulai'], $c['tanggal'])), 'y' => (float)$c['berat_kg']];
+        }
+    } else {
+        $titik[] = ['x' => 0, 'y' => (float)$aktif['berat_awal']];
     }
+
+    $max_hari_titik = $titik ? max(array_column($titik, 'x')) : 0;
+    $max_grafik = max($durasi, $max_hari_titik, $hari_ke);
+    $max_grafik = (int)(ceil($max_grafik / 5) * 5);
 }
 
 $judul = 'Profil dan Perkembangan';
@@ -188,15 +221,16 @@ include 'header.php';
     <h3 style="margin-bottom:6px">Catat berat badan</h3>
     <form method="post" class="form-tambah">
       <input type="hidden" name="aksi" value="catat">
+      <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
       <div style="max-width:180px"><label for="tanggal">Tanggal</label>
-        <input type="date" id="tanggal" name="tanggal" value="<?= h($hari_ini) ?>" min="<?= h($aktif['tanggal_mulai']) ?>" max="<?= h($hari_ini) ?>" required></div>
+        <input type="date" id="tanggal" name="tanggal" value="<?= h($hari_ini) ?>" max="<?= h($hari_ini) ?>" required></div>
       <div style="max-width:160px"><label for="berat">Berat (kg)</label>
         <input type="number" id="berat" name="berat" step="0.1" required></div>
       <div><label for="catatan">Catatan (opsional)</label>
         <input type="text" id="catatan" name="catatan" maxlength="255" placeholder="Misalnya: minggu ini banyak lembur"></div>
       <button type="submit" class="tombol">Simpan</button>
     </form>
-    <p class="catatan">Menimbanglah seminggu sekali pada hari dan jam yang sama. Berat harian naik turun karena cairan. Setiap catatan baru memperbarui target kalorimu.</p>
+    <p class="catatan">Menimbanglah seminggu sekali pada hari dan jam yang sama. Kamu dapat mencatat timbangan untuk hari ini maupun tanggal lampau. Setiap catatan baru memperbarui target kalorimu.</p>
   </div>
 
   <h3 style="margin-bottom:10px">Riwayat berat</h3>
@@ -208,15 +242,19 @@ include 'header.php';
       $sebelum = null;
       $baris = [];
       foreach ($catatan as $c) { $baris[] = [$c, $sebelum]; $sebelum = (float)$c['berat_kg']; }
-      foreach (array_reverse($baris) as [$c, $sb]):
-          $selisih = $sb === null ? null : (float)$c['berat_kg'] - $sb; ?>
-        <tr>
-          <td><?= h(tgl($c['tanggal'])) ?></td>
-          <td><?= nf($c['berat_kg'], 1) ?> kg</td>
-          <td><?= $selisih === null ? '-' : (($selisih > 0 ? '+' : '') . nf($selisih, 1) . ' kg') ?></td>
-          <td><?= h($c['catatan'] ?? '') ?></td>
-        </tr>
-      <?php endforeach; ?>
+      if (empty($baris)): ?>
+        <tr><td colspan="4" class="teks-redup" style="text-align:center;padding:16px">Belum ada catatan timbangan pada rencana ini.</td></tr>
+      <?php else:
+        foreach (array_reverse($baris) as [$c, $sb]):
+            $selisih = $sb === null ? null : (float)$c['berat_kg'] - $sb; ?>
+          <tr>
+            <td><?= h(tgl($c['tanggal'])) ?></td>
+            <td><?= nf($c['berat_kg'], 1) ?> kg</td>
+            <td><?= $selisih === null ? '-' : (($selisih > 0 ? '+' : '') . nf($selisih, 1) . ' kg') ?></td>
+            <td><?= h($c['catatan'] ?? '') ?></td>
+          </tr>
+        <?php endforeach;
+      endif; ?>
       </tbody>
     </table>
   </div>
@@ -230,7 +268,7 @@ include 'header.php';
         { label: 'Jalur ideal', data: [{x:0, y:<?= (float)$aktif['berat_awal'] ?>}, {x:<?= $durasi ?>, y:<?= (float)$aktif['berat_target'] ?>}],
           borderColor: '#F5C542', borderDash: [6,6], pointRadius: 0 }
       ]},
-      options: { scales: { x: { type: 'linear', min: 0, max: <?= $durasi ?>, title: { display: true, text: 'Hari ke-' } },
+      options: { scales: { x: { type: 'linear', min: 0, max: <?= $max_grafik ?>, ticks: { stepSize: 5 }, title: { display: true, text: 'Hari ke-' } },
                            y: { title: { display: true, text: 'kg' } } } }
     });
   </script>

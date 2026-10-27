@@ -6,7 +6,7 @@
 <?php endif; ?>
 
 <footer>
-  Calorie Lab bersifat edukatif dan bukan pengganti konsultasi dengan dokter atau ahli gizi.
+  <p>© <?= date('Y') ?> Calorie Lab · Informasi bersifat edukatif, bukan pengganti saran medis.</p>
 </footer>
 
 </body>

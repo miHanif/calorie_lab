@@ -1,7 +1,6 @@
 <?php
 require_once 'koneksi.php';
 wajib_login();
-date_default_timezone_set('Asia/Jakarta');
 
 $uid = $_SESSION['user_id'];
 $hari_ini = date('Y-m-d');
@@ -41,12 +40,14 @@ if ($rencana) {
 // Target kalori: utamakan rencana aktif, kalau tidak ada pakai BMI
 $target_kalori = $rencana['target_kalori'] ?? ($bmi['target_kalori'] ?? null);
 
-$jumlah_makanan_hari_ini = 0;
-if ($bmi) {
-    date_default_timezone_set('Asia/Jakarta');
-    $st = $pdo->prepare('SELECT COUNT(*) FROM catatan_makan WHERE user_id = ? AND tanggal = ?');
-    $st->execute([$uid, date('Y-m-d')]);
-    $jumlah_makanan_hari_ini = (int)$st->fetchColumn();
+$st = $pdo->prepare('SELECT COUNT(*) FROM catatan_makan WHERE user_id = ? AND tanggal = ?');
+$st->execute([$uid, $hari_ini]);
+$jumlah_makanan_hari_ini = (int)$st->fetchColumn();
+
+$rencana_selesai = false;
+if ($rencana) {
+    $selesai_rencana = (new DateTime($rencana['tanggal_mulai']))->modify('+' . (int)$rencana['durasi_hari'] . ' days')->format('Y-m-d');
+    $rencana_selesai = $hari_ini >= $selesai_rencana;
 }
 
 if (!$bmi) {
@@ -62,6 +63,13 @@ if (!$bmi) {
         'deskripsi' => 'Pilih tujuan dan durasi agar perkembanganmu punya target yang jelas.',
         'tautan' => 'rencana.php',
         'tombol' => 'Buat rencana',
+    ];
+} elseif ($rencana_selesai) {
+    $langkah = [
+        'judul' => 'Masa rencana diet telah selesai',
+        'deskripsi' => 'Program dietmu telah mencapai target durasi. Selesaikan rencana ini untuk menyimpan riwayatnya atau buat rencana baru.',
+        'tautan' => 'rencana.php',
+        'tombol' => 'Tinjau rencana',
     ];
 } elseif ($jumlah_makanan_hari_ini === 0) {
     $langkah = [
@@ -88,7 +96,7 @@ include 'header.php';
 <header class="dashboard-heading">
   <div>
     <p class="dashboard-eyebrow">DASHBOARD</p>
-    <h2>Halo, <?= h($_SESSION['nama']) ?></h2>
+    <h2>Halo, <?= h($_SESSION['nama'] ?? 'Pengguna') ?></h2>
     <p class="teks-redup">Ini ringkasan dan langkah kecil yang bisa kamu lakukan hari ini.</p>
   </div>
   <a class="tombol tombol-sekunder" href="profil.php">Lihat perkembangan</a>
@@ -106,7 +114,7 @@ include 'header.php';
     <article class="dashboard-stat">
       <span class="dashboard-stat-label">BMI terakhir</span>
       <?php if ($bmi): ?>
-        <strong class="dashboard-stat-value"><?= h($bmi['bmi']) ?></strong>
+        <strong class="dashboard-stat-value"><?= h(number_format((float)$bmi['bmi'], 1, ',', '.')) ?></strong>
         <span class="dashboard-stat-note"><?= h($bmi['kategori']) ?></span>
       <?php else: ?>
         <strong class="dashboard-stat-empty">Belum dihitung</strong>
@@ -130,8 +138,8 @@ include 'header.php';
       <?php if ($rencana): ?>
         <strong class="dashboard-stat-plan"><?= h($label_tujuan[$rencana['tujuan']] ?? $rencana['tujuan']) ?></strong>
         <span class="dashboard-stat-note">
-          <?= h($berat_terakhir) ?> kg sekarang <span aria-hidden="true">&rarr;</span>
-          <?= h($rencana['berat_target']) ?> kg target
+          <?= h(number_format((float)$berat_terakhir, 1, ',', '.')) ?> kg sekarang <span aria-hidden="true">&rarr;</span>
+          <?= h(number_format((float)$rencana['berat_target'], 1, ',', '.')) ?> kg target
         </span>
         <a class="dashboard-stat-link" href="rencana.php">Lihat rencana <span aria-hidden="true">&rarr;</span></a>
       <?php else: ?>
@@ -151,7 +159,7 @@ include 'header.php';
   <a class="tombol" href="<?= h($langkah['tautan']) ?>"><?= h($langkah['tombol']) ?></a>
 </section>
 
-<?php if ($menu_harian): ?>
+<?php if ($menu_harian && (int)$menu_harian['jumlah_menu'] > 0): ?>
   <section class="menu-harian-dashboard" aria-labelledby="menu-harian-judul">
     <div>
       <span class="dashboard-eyebrow">RENCANA MENU · <?= h(date('d-m-Y', strtotime($hari_ini))) ?></span>

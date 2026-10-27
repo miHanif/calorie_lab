@@ -1,7 +1,6 @@
 <?php
 require_once 'koneksi.php';
 wajib_login();
-date_default_timezone_set('Asia/Jakarta');
 
 $uid      = $_SESSION['user_id'];
 $hari_ini = date('Y-m-d');
@@ -10,8 +9,10 @@ $bulan = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
 $label = ['turun' => 'Menurunkan berat badan', 'naik' => 'Menaikkan berat badan',
           'pertahankan' => 'Mempertahankan berat badan'];
 
-function nf($n, $d = 0) { return number_format($n, $d, ',', '.'); }
-function tgl($s) { global $bulan; $t = strtotime($s); return date('j', $t) . ' ' . $bulan[(int)date('n', $t)] . ' ' . date('Y', $t); }
+if (!function_exists('nf')) { function nf($n, $d = 0) { return number_format($n, $d, ',', '.'); } }
+if (!function_exists('tgl')) { function tgl($s) { global $bulan; $t = strtotime($s); return date('j', $t) . ' ' . $bulan[(int)date('n', $t)] . ' ' . date('Y', $t); } }
+
+$csrf = csrf_token('csrf_token_rencana');
 
 // Data dari hitung BMI terakhir
 $q = $pdo->prepare('SELECT r.*, k.kode AS kat_kode, k.nama AS kat_nama, k.warna
@@ -30,19 +31,24 @@ $pesan = $_SESSION['pesan'] ?? '';
 unset($_SESSION['pesan']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $aksi = $_POST['aksi'] ?? '';
+    $token = $_POST['csrf_token'] ?? '';
+    $aksi  = $_POST['aksi'] ?? '';
 
-    // Batalkan rencana
-    if ($aksi === 'batal' && $aktif) {
+    if (!csrf_valid($token, 'csrf_token_rencana')) {
+        $error = 'Sesi formulir kedaluwarsa. Muat ulang halaman lalu coba lagi.';
+    } elseif ($aksi === 'batal' && $aktif) {
         $pdo->prepare("UPDATE rencana_diet SET status = 'batal' WHERE id = ? AND user_id = ?")
             ->execute([$aktif['id'], $uid]);
-        $_SESSION['pesan'] = 'Rencana dibatalkan. Kamu bisa membuat rencana baru.';
+        $_SESSION['pesan'] = 'Rencana dibatalkan. Kamu bisa membuat rencana baru kapan saja.';
         header('Location: rencana.php');
         exit;
-    }
-
-    // Buat rencana baru
-    if ($aksi === 'buat' && $bmi && !$aktif) {
+    } elseif ($aksi === 'selesai' && $aktif) {
+        $pdo->prepare("UPDATE rencana_diet SET status = 'selesai' WHERE id = ? AND user_id = ?")
+            ->execute([$aktif['id'], $uid]);
+        $_SESSION['pesan'] = 'Selamat! Rencana diet telah ditandai selesai. Kamu bisa melihat ringkasannya di menu Profil & Perkembangan atau memulai rencana baru.';
+        header('Location: rencana.php');
+        exit;
+    } elseif ($aksi === 'buat' && $bmi && !$aktif) {
         $tujuan = $_POST['tujuan'] ?? '';
         $durasi = (int)($_POST['durasi'] ?? 0);
         $aktv   = (float)($_POST['aktivitas'] ?? 1.2);
@@ -60,9 +66,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($tujuan, ['turun', 'naik', 'pertahankan'], true)
             || !in_array($durasi, [30, 60, 90, 180], true)
             || !in_array($aktv, [1.2, 1.375, 1.55], true)) {
-            $error = 'Isian tidak valid. Silakan ulangi.';
+            $error = 'Isian tidak valid. Silakan periksa kembali formulir.';
         } elseif ($usia < 18) {
             $error = 'Rencana otomatis hanya untuk usia 18 tahun ke atas. Untuk usia di bawah itu, sebaiknya konsultasi ke dokter atau ahli gizi.';
+        } elseif ($tujuan !== 'pertahankan' && ($target_berat < 20 || $target_berat > 250)) {
+            $error = 'Berat target harus diisi dengan angka valid antara 20 dan 250 kg.';
         } elseif ($tujuan === 'turun') {
             if ($bmi['kat_kode'] === 'kurus')            $error = 'BMI-mu masuk kategori Kurus, jadi menurunkan berat badan tidak disarankan.';
             elseif ($target_berat >= $berat)             $error = 'Berat target harus lebih rendah dari berat sekarang.';
@@ -135,10 +143,20 @@ include 'header.php';
 <?php elseif ($aktif):
     $mulai   = new DateTime($aktif['tanggal_mulai']);
     $selesai = (clone $mulai)->modify('+' . (int)$aktif['durasi_hari'] . ' days');
-    $hari_ke = min((int)$aktif['durasi_hari'], (int)$mulai->diff(new DateTime($hari_ini))->days + 1);
-    $persen  = (int)round($hari_ke / $aktif['durasi_hari'] * 100); ?>
+    $selesai_str = $selesai->format('Y-m-d');
+    $diff_hari = (int)(new DateTime($hari_ini))->diff($mulai)->days;
+    $hari_ke = $hari_ini >= $aktif['tanggal_mulai'] ? min((int)$aktif['durasi_hari'], $diff_hari + 1) : 1;
+    $persen  = (int)round($hari_ke / $aktif['durasi_hari'] * 100);
+    $durasi_selesai = $hari_ini >= $selesai_str;
+?>
 
-  <p class="teks-redup"><?= h($label[$aktif['tujuan']]) ?> &middot; <?= h(tgl($aktif['tanggal_mulai'])) ?> sampai <?= h($selesai->format('Y-m-d') ? tgl($selesai->format('Y-m-d')) : '') ?></p>
+  <?php if ($durasi_selesai): ?>
+    <div class="alert sukses" style="margin-bottom:18px">
+      <strong>Masa program telah selesai!</strong> Target durasi rencana dietmu telah terpenuhi. Kamu bisa menandai rencana ini sebagai selesai untuk menyimpan rekam jejaknya, atau membuat program baru.
+    </div>
+  <?php endif; ?>
+
+  <p class="teks-redup"><?= h($label[$aktif['tujuan']]) ?> &middot; <?= h(tgl($aktif['tanggal_mulai'])) ?> sampai <?= h(tgl($selesai_str)) ?></p>
 
   <div class="ringkas">
     <div class="kartu"><small>Berat awal</small><div class="angka-besar"><?= nf($aktif['berat_awal'], 1) ?></div>kg</div>
@@ -146,19 +164,32 @@ include 'header.php';
     <div class="kartu"><small>Target kalori harian</small><div class="angka-besar"><?= nf($aktif['target_kalori']) ?></div>kkal</div>
   </div>
 
-  <div class="progres"><div class="progres-isi" style="width:<?= $persen ?>%"></div></div>
-  <p class="catatan">Hari ke-<?= $hari_ke ?> dari <?= (int)$aktif['durasi_hari'] ?> hari (<?= $persen ?>%)</p>
+  <div class="progres"><div class="progres-isi" style="width:<?= min(100, $persen) ?>%"></div></div>
+  <p class="catatan">
+    Hari ke-<?= $hari_ke ?> dari <?= (int)$aktif['durasi_hari'] ?> hari (<?= min(100, $persen) ?>%)
+    <?php if ($durasi_selesai): ?> &middot; <span class="badge" style="background:var(--normal)">Durasi tercapai</span><?php endif; ?>
+  </p>
 
   <div class="hasil" style="margin-top:20px">
-    <p>Pantau perkembangan beratmu dan ikuti menu rekomendasi setiap hari. Perkiraan kebutuhan kalori bersifat edukatif, bukan pengganti saran dokter atau ahli gizi.</p>
+    <p>Pantau perkembangan beratmu secara berkala di halaman profil dan ikuti rekomendasi menu setiap hari.</p>
     <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
       <a class="tombol" href="menu.php">Lihat menu rekomendasi</a>
       <a class="tombol garis" href="catatan.php">Catatan kalori</a>
+      <a class="tombol garis" href="profil.php">Perkembangan berat</a>
     </div>
-    <form method="post" style="margin-top:14px">
-      <input type="hidden" name="aksi" value="batal">
-      <button type="submit" class="tombol hapus" onclick="return confirm('Batalkan rencana ini?')">Batalkan rencana</button>
-    </form>
+
+    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;border-top:1px solid var(--garis);padding-top:14px">
+      <form method="post" style="display:inline">
+        <input type="hidden" name="aksi" value="selesai">
+        <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+        <button type="submit" class="tombol" onclick="return confirm('Tandai rencana diet ini sebagai selesai?')">Tandai selesai</button>
+      </form>
+      <form method="post" style="display:inline">
+        <input type="hidden" name="aksi" value="batal">
+        <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
+        <button type="submit" class="tombol hapus" onclick="return confirm('Batalkan rencana ini? Catatan yang sudah tersimpan akan tetap ada di riwayat.')">Batalkan rencana</button>
+      </form>
+    </div>
   </div>
 
 <?php else:
@@ -177,6 +208,7 @@ include 'header.php';
   <div class="kotak-form" style="max-width:none">
     <form method="post">
       <input type="hidden" name="aksi" value="buat">
+      <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
 
       <label for="tujuan">Tujuan</label>
       <select id="tujuan" name="tujuan">

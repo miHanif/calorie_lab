@@ -1,7 +1,6 @@
 <?php
 require_once 'koneksi.php';
 wajib_login();
-date_default_timezone_set('Asia/Jakarta');
 
 $uid      = $_SESSION['user_id'];
 $hari_ini = date('Y-m-d');
@@ -9,19 +8,28 @@ $porsi_ok = [0.5, 1.0, 1.5, 2.0];
 $bulan = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
           'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
-function nf($n) { return number_format($n, 0, ',', '.'); }
-function tanggal_valid($tanggal) {
-    if (!is_string($tanggal)) return false;
-    $hasil = DateTime::createFromFormat('!Y-m-d', $tanggal);
-    $kesalahan = DateTime::getLastErrors();
-    return $hasil && $hasil->format('Y-m-d') === $tanggal
-        && ($kesalahan === false || ($kesalahan['warning_count'] === 0 && $kesalahan['error_count'] === 0));
+if (!function_exists('nf')) {
+    function nf($n, $d = 0) { return number_format($n, $d, ',', '.'); }
+}
+if (!function_exists('tanggal_valid')) {
+    function tanggal_valid($tanggal) {
+        if (!is_string($tanggal)) return false;
+        $hasil = DateTime::createFromFormat('!Y-m-d', $tanggal);
+        $kesalahan = DateTime::getLastErrors();
+        return $hasil && $hasil->format('Y-m-d') === $tanggal
+            && ($kesalahan === false || ($kesalahan['warning_count'] === 0 && $kesalahan['error_count'] === 0));
+    }
 }
 
-$csrf_token = $_SESSION['csrf_token_catatan'] ?? bin2hex(random_bytes(32));
-$_SESSION['csrf_token_catatan'] = $csrf_token;
+// Batas maksimal tanggal yang bisa dilihat: hari ini atau tanggal terakhir yang tercatat
+$st_max = $pdo->prepare('SELECT MAX(tanggal) FROM catatan_makan WHERE user_id = ?');
+$st_max->execute([$uid]);
+$max_recorded = $st_max->fetchColumn();
+$tanggal_maks_lihat = ($max_recorded && $max_recorded > $hari_ini) ? $max_recorded : $hari_ini;
+
+$csrf_token = csrf_token('csrf_token_catatan');
 $tanggal_pilihan = $_GET['tanggal'] ?? $hari_ini;
-if (!tanggal_valid($tanggal_pilihan) || $tanggal_pilihan > $hari_ini) {
+if (!tanggal_valid($tanggal_pilihan) || $tanggal_pilihan > $tanggal_maks_lihat) {
     $tanggal_pilihan = $hari_ini;
 }
 
@@ -31,14 +39,16 @@ unset($_SESSION['pesan_catatan']);
 unset($_SESSION['pesan_catatan_tipe']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $aksi = $_POST['aksi'] ?? '';
+    $token        = $_POST['csrf_token'] ?? '';
+    $aksi         = $_POST['aksi'] ?? '';
     $tanggal_post = $_POST['tanggal'] ?? $hari_ini;
-    if (!tanggal_valid($tanggal_post) || $tanggal_post > $hari_ini) {
-        $tanggal_post = $hari_ini;
-        $_SESSION['pesan_catatan'] = 'Tanggal catatan tidak valid. Silakan pilih tanggal hari ini atau tanggal sebelumnya.';
-        $_SESSION['pesan_catatan_tipe'] = 'error';
-    } elseif (!is_string($_POST['csrf_token'] ?? null) || !hash_equals($csrf_token, $_POST['csrf_token'])) {
+
+    if (!csrf_valid($token, 'csrf_token_catatan')) {
         $_SESSION['pesan_catatan'] = 'Sesi formulir kedaluwarsa. Muat ulang halaman lalu coba lagi.';
+        $_SESSION['pesan_catatan_tipe'] = 'error';
+    } elseif (!tanggal_valid($tanggal_post) || $tanggal_post > $tanggal_maks_lihat) {
+        $tanggal_post = $hari_ini;
+        $_SESSION['pesan_catatan'] = 'Tanggal catatan tidak valid. Silakan pilih tanggal yang tersedia.';
         $_SESSION['pesan_catatan_tipe'] = 'error';
     } elseif ($aksi === 'tambah') {
         $menu_id = (int)($_POST['menu_id'] ?? 0);
@@ -55,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($aksi === 'hapus') {
         $id  = (int)($_POST['id'] ?? 0);
+        $pdo->prepare('UPDATE menu_harian_item SET catatan_makan_id = NULL WHERE catatan_makan_id = ?')->execute([$id]);
         $del = $pdo->prepare('DELETE FROM catatan_makan WHERE id = ? AND user_id = ?');
         $del->execute([$id, $uid]);
         $dihapus = $del->rowCount() > 0;
@@ -102,8 +113,8 @@ if ($terakhir) {
     $total = (int)round($total);
 
     $sisa   = $tanggal_pilihan === $hari_ini ? $target - $total : null;
-    $persen = $tanggal_pilihan === $hari_ini && $target > 0 ? (int)round($total / $target * 100) : null;
-    $kelas  = $persen === null ? '' : ($persen > 100 ? 'merah' : ($persen >= 90 ? 'kuning' : ''));
+    $persen = $tanggal_pilihan === $hari_ini && $target > 0 ? (int)round($total / $target * 100) : 0;
+    $kelas  = $persen > 100 ? 'merah' : ($persen >= 90 ? 'kuning' : '');
 
     // Daftar menu untuk form
     $semua_menu = $pdo->query("SELECT id, nama_menu, waktu_makan, kalori FROM menu_diet
@@ -111,7 +122,7 @@ if ($terakhir) {
 
     // Saran menu yang masih muat di sisa kalori
     if ($tanggal_pilihan === $hari_ini && $sisa > 0) {
-        $q = $pdo->prepare('SELECT m.* FROM menu_diet m
+        $q = $pdo->prepare('SELECT DISTINCT m.* FROM menu_diet m
                             JOIN menu_kategori mk ON mk.menu_id = m.id
                             WHERE mk.kategori_id = ? AND m.kalori <= ?
                             ORDER BY RAND() LIMIT 4');
@@ -121,9 +132,16 @@ if ($terakhir) {
 }
 
 $tanggal_teks = date('j', strtotime($tanggal_pilihan)) . ' ' . $bulan[(int)date('n', strtotime($tanggal_pilihan))] . ' ' . date('Y', strtotime($tanggal_pilihan));
-$q = $pdo->prepare('SELECT DISTINCT tanggal FROM catatan_makan WHERE user_id = ? AND tanggal <= ? ORDER BY tanggal DESC LIMIT 7');
-$q->execute([$uid, $hari_ini]);
+$q = $pdo->prepare('SELECT DISTINCT tanggal FROM catatan_makan WHERE user_id = ? AND tanggal <= ? ORDER BY tanggal DESC LIMIT 14');
+$q->execute([$uid, $tanggal_maks_lihat]);
 $tanggal_riwayat = $q->fetchAll(PDO::FETCH_COLUMN);
+
+$ikon_waktu = [
+    'pagi'    => '🌅',
+    'siang'   => '☀️',
+    'malam'   => '🌙',
+    'camilan' => '🍎',
+];
 
 $judul = 'Catatan Kalori';
 include 'header.php';
@@ -143,7 +161,7 @@ include 'header.php';
   <form method="get" class="filter-bar catatan-tanggal">
     <div>
       <label for="tanggal-riwayat">Lihat catatan tanggal</label>
-      <input type="date" id="tanggal-riwayat" name="tanggal" value="<?= h($tanggal_pilihan) ?>" max="<?= h($hari_ini) ?>">
+      <input type="date" id="tanggal-riwayat" name="tanggal" value="<?= h($tanggal_pilihan) ?>" max="<?= h($tanggal_maks_lihat) ?>">
     </div>
     <button type="submit" class="tombol">Tampilkan</button>
     <?php if ($tanggal_pilihan !== $hari_ini): ?>
@@ -178,12 +196,16 @@ include 'header.php';
     <?php else: ?>
       <div class="kartu"><small>Total tercatat</small><div class="angka-besar"><?= nf($total) ?></div>kkal</div>
       <div class="kartu"><small>Jumlah catatan</small><div class="angka-besar"><?= count($catatan) ?></div>makanan</div>
+      <div class="kartu">
+        <small>Rata-rata per makanan</small>
+        <div class="angka-besar"><?= count($catatan) > 0 ? nf(round($total / count($catatan))) : 0 ?></div>kkal
+      </div>
     <?php endif; ?>
   </div>
 
   <?php if ($tanggal_pilihan === $hari_ini): ?>
-    <div class="progres"><div class="progres-isi <?= $kelas ?>" style="width:<?= min(100, $persen) ?>%"></div></div>
-    <p class="catatan"><?= $persen ?>% dari target
+    <div class="progres"><div class="progres-isi <?= $kelas ?>" style="width:<?= min(100, (int)$persen) ?>%"></div></div>
+    <p class="catatan"><?= (int)$persen ?>% dari target
       <?php if ($sisa < 0): ?> &middot; Catatan hari ini sudah melewati target kalori perkiraan.<?php endif; ?>
     </p>
   <?php else: ?>
@@ -256,7 +278,14 @@ include 'header.php';
     <div class="daftar-menu">
       <?php foreach ($saran as $m): ?>
         <article class="menu-kartu">
-          <small><?= h(ucfirst($m['waktu_makan'])) ?><?= $m['vegetarian'] ? ' &middot; Vegetarian' : '' ?></small>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px">
+            <span class="badge-waktu badge-waktu-<?= h($m['waktu_makan']) ?>">
+              <?= $ikon_waktu[$m['waktu_makan']] ?? '' ?> <?= h(ucfirst($m['waktu_makan'])) ?>
+            </span>
+            <?php if ($m['vegetarian']): ?>
+              <span class="badge kategori-normal" style="font-size:.72rem;padding:2px 8px">Veg</span>
+            <?php endif; ?>
+          </div>
           <h3><?= h($m['nama_menu']) ?></h3>
           <div class="menu-info"><b><?= (int)$m['kalori'] ?> kkal</b></div>
           <form method="post">
