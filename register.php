@@ -58,12 +58,29 @@ include 'header.php';
     <input type="email" id="email" name="email" value="<?= h($_POST['email'] ?? '') ?>" required>
 
     <label for="password">Kata sandi</label>
-    <input type="password" id="password" name="password" minlength="6" maxlength="72" required>
+    <div class="password-input-group">
+      <input type="password" id="password" name="password" minlength="6" maxlength="72" required autocomplete="new-password">
+      <button type="button" class="toggle-pass-btn" id="btn-toggle-pass" aria-label="Lihat atau sembunyikan kata sandi">
+        Lihat
+      </button>
+    </div>
 
     <button type="submit" class="tombol penuh">Buat akun</button>
   </form>
 
   <p class="catatan">Sudah punya akun? <a href="login.php">Masuk</a></p>
 </div>
+
+<script>
+  const btnToggle = document.getElementById('btn-toggle-pass');
+  const inputPass = document.getElementById('password');
+  if (btnToggle && inputPass) {
+    btnToggle.addEventListener('click', function () {
+      const isPassword = inputPass.getAttribute('type') === 'password';
+      inputPass.setAttribute('type', isPassword ? 'text' : 'password');
+      this.textContent = isPassword ? 'Sembunyikan' : 'Lihat';
+    });
+  }
+</script>
 
 <?php include 'footer.php'; ?>

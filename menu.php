@@ -7,11 +7,16 @@ if (!function_exists('rp')) {
 }
 
 if (!function_exists('cari_menu')) {
-    function cari_menu($pdo, $kid, $waktu, $harga, $veg, $acak = false) {
-        $sql = 'SELECT m.* FROM menu_diet m
-                JOIN menu_kategori mk ON mk.menu_id = m.id
-                WHERE mk.kategori_id = ?';
-        $param = [$kid];
+    function cari_menu($pdo, $kid, $waktu, $harga, $veg, $acak = false, $semua = false) {
+        if ($semua) {
+            $sql = 'SELECT DISTINCT m.* FROM menu_diet m WHERE 1=1';
+            $param = [];
+        } else {
+            $sql = 'SELECT DISTINCT m.* FROM menu_diet m
+                    JOIN menu_kategori mk ON mk.menu_id = m.id
+                    WHERE mk.kategori_id = ?';
+            $param = [$kid];
+        }
         if ($waktu !== '') { $sql .= ' AND m.waktu_makan = ?'; $param[] = $waktu; }
         if ($harga > 0)    { $sql .= ' AND m.harga <= ?';      $param[] = $harga; }
         if ($veg)          { $sql .= ' AND m.vegetarian = 1'; }
@@ -102,6 +107,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'catat_d
 
     $anchor = ($item_tanggal === $hari_ini) ? '' : '#riwayat-menu';
     header('Location: menu.php' . $anchor);
+    exit;
+}
+
+// ── Catat makanan manual langsung dari kartu menu ──────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'catat_manual') {
+    $token   = $_POST['csrf_token'] ?? '';
+    $menu_id = (int)($_POST['menu_id'] ?? 0);
+    $porsi   = (float)($_POST['porsi'] ?? 1);
+
+    if (!csrf_valid($token, 'csrf_token_menu_harian')) {
+        $_SESSION['pesan_menu_harian']      = 'Sesi formulir kedaluwarsa. Muat ulang halaman lalu coba lagi.';
+        $_SESSION['pesan_menu_harian_tipe'] = 'error';
+    } elseif (!in_array($porsi, [0.5, 1.0, 1.5, 2.0], true)) {
+        $_SESSION['pesan_menu_harian']      = 'Jumlah porsi tidak valid.';
+        $_SESSION['pesan_menu_harian_tipe'] = 'error';
+    } else {
+        $st_cek = $pdo->prepare('SELECT nama_menu FROM menu_diet WHERE id = ?');
+        $st_cek->execute([$menu_id]);
+        $m_nama = $st_cek->fetchColumn();
+
+        if ($m_nama) {
+            $ins = $pdo->prepare('INSERT INTO catatan_makan (user_id, menu_id, porsi, tanggal) VALUES (?, ?, ?, ?)');
+            $ins->execute([$_SESSION['user_id'], $menu_id, $porsi, $hari_ini]);
+            $_SESSION['pesan_menu_harian']      = "Berhasil mencatat '{$m_nama}' ($porsi porsi) ke Catatan Kalori hari ini!";
+            $_SESSION['pesan_menu_harian_tipe'] = 'sukses';
+        } else {
+            $_SESSION['pesan_menu_harian']      = 'Menu makanan tidak ditemukan.';
+            $_SESSION['pesan_menu_harian_tipe'] = 'error';
+        }
+    }
+    $query_str = $_GET;
+    header('Location: menu.php?' . http_build_query($query_str));
     exit;
 }
 
@@ -293,16 +330,24 @@ foreach ($st->fetchAll() as $item) {
     $riwayat_menu[$plan_id]['total_harga'] += (int)$item['harga'];
 }
 
+$lingkup = $_GET['lingkup'] ?? 'rekomendasi';
+if (!in_array($lingkup, ['rekomendasi', 'semua'], true)) {
+    $lingkup = 'rekomendasi';
+}
+
 if ($terakhir) {
     $kid = (int)$terakhir['kategori_id'];
-    $menu = cari_menu($pdo, $kid, $waktu, $harga, $veg);
+    $menu = cari_menu($pdo, $kid, $waktu, $harga, $veg, false, ($lingkup === 'semua'));
+} else {
+    // Jika belum ada BMI, tampilkan semua menu
+    $menu = cari_menu($pdo, 0, $waktu, $harga, $veg, false, true);
 }
 
 $ikon_waktu = [
-    'pagi'    => '🌅',
-    'siang'   => '☀️',
-    'malam'   => '🌙',
-    'camilan' => '🍎',
+    'pagi'    => '',
+    'siang'   => '',
+    'malam'   => '',
+    'camilan' => '',
 ];
 
 $tampilan = $_GET['tampilan'] ?? 'grid';
@@ -331,14 +376,38 @@ include 'header.php';
   </div>
 
 <?php else: ?>
-  <p class="teks-redup">
-    Berdasarkan BMI terakhirmu (<?= h(number_format($terakhir['bmi'], 1, ',', '.')) ?>):
-    <span class="badge kategori-<?= h($terakhir['kat_kode']) ?>"><?= h($terakhir['kat_nama']) ?></span>
-    &middot; Target kalori harian: <b><?= h(number_format((int)$terakhir['target_kalori'], 0, ',', '.')) ?> kkal</b>
-  </p>
+  <div class="kartu" style="margin-bottom: 20px; padding: 18px 22px; background: linear-gradient(135deg, #FFFFFF 0%, #FAF8F5 100%);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+      <div>
+        <p style="margin: 0 0 6px; font-size: 0.95rem;">
+          Berdasarkan BMI terakhirmu (<b><?= h(number_format($terakhir['bmi'], 1, ',', '.')) ?></b>):
+          <span class="badge kategori-<?= h($terakhir['kat_kode']) ?>"><?= h($terakhir['kat_nama']) ?></span>
+          &middot; Target kalori harian: <b><?= h(number_format((int)$terakhir['target_kalori'], 0, ',', '.')) ?> kkal</b>
+        </p>
+        <p class="teks-redup" style="margin: 0; font-size: 0.86rem; line-height: 1.5;">
+          <b>Mengapa menu difilter?</b> Sistem otomatis menyaring makanan yang paling sesuai dengan kebutuhan nutrisimu (misal: porsi defisit aman bagi kategori Gemuk/Obesitas, atau padat kalori bagi kategori Kurus). Kamu tetap bebas melihat dan memilih seluruh menu dari katalog lengkap.
+        </p>
+      </div>
+
+      <!-- Tab Beralih: Khusus Rekomendasi vs Seluruh Katalog -->
+      <div style="display: flex; gap: 6px; background: var(--latar); padding: 4px; border-radius: var(--radius-pil); border: 1px solid var(--garis);">
+        <a href="?<?= h(http_build_query(array_merge($_GET, ['lingkup' => 'rekomendasi', 'hal' => 1]))) ?>" 
+           class="tombol kecil <?= $lingkup === 'rekomendasi' ? '' : 'tombol-sekunder' ?>" 
+           style="border-radius: var(--radius-pil); min-height: 32px; padding: 4px 14px; font-size: 0.82rem; text-decoration: none;">
+          Sesuai BMI Saya
+        </a>
+        <a href="?<?= h(http_build_query(array_merge($_GET, ['lingkup' => 'semua', 'hal' => 1]))) ?>" 
+           class="tombol kecil <?= $lingkup === 'semua' ? '' : 'tombol-sekunder' ?>" 
+           style="border-radius: var(--radius-pil); min-height: 32px; padding: 4px 14px; font-size: 0.82rem; text-decoration: none;">
+          Semua 240+ Menu
+        </a>
+      </div>
+    </div>
+  </div>
 
   <form method="get" class="filter-bar">
     <input type="hidden" name="tampilan" value="<?= h($tampilan) ?>">
+    <input type="hidden" name="lingkup" value="<?= h($lingkup) ?>">
     <div>
       <label for="waktu">Waktu makan</label>
       <select id="waktu" name="waktu">
@@ -528,7 +597,7 @@ include 'header.php';
 
   <?php if ($menu): ?>
     <?php
-    $params_nav = array_filter(['waktu' => $waktu ?: null, 'harga' => $harga ?: null, 'budget' => $budget ?: null, 'veg' => $veg ? '1' : null], fn($v) => $v !== null && $v !== '');
+    $params_nav = array_filter(['waktu' => $waktu ?: null, 'harga' => $harga ?: null, 'budget' => $budget ?: null, 'veg' => $veg ? '1' : null, 'lingkup' => $lingkup !== 'rekomendasi' ? $lingkup : null], fn($v) => $v !== null && $v !== '');
     ?>
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <p class="teks-redup" style="margin:0">
@@ -563,6 +632,21 @@ include 'header.php';
               <b><?= (int)$m['kalori'] ?> kkal</b>
               <span><?= rp($m['harga']) ?></span>
             </div>
+            <!-- Tombol Pilih & Catat Manual -->
+            <form method="post" style="margin-top: 12px; display: flex; gap: 6px; align-items: center;">
+              <input type="hidden" name="aksi" value="catat_manual">
+              <input type="hidden" name="csrf_token" value="<?= h($csrf_token) ?>">
+              <input type="hidden" name="menu_id" value="<?= (int)$m['id'] ?>">
+              <select name="porsi" class="menu-porsi" style="height: 34px; padding: 2px 8px; font-size: 0.8rem; margin: 0; flex: 1;">
+                <option value="0.5">½ porsi</option>
+                <option value="1" selected>1 porsi</option>
+                <option value="1.5">1,5 porsi</option>
+                <option value="2">2 porsi</option>
+              </select>
+              <button type="submit" class="tombol kecil" style="padding: 0 12px; height: 34px; font-size: 0.8rem; margin: 0; white-space: nowrap;">
+                + Catat Makan
+              </button>
+            </form>
           </article>
         <?php endforeach; ?>
       </div>
@@ -578,6 +662,7 @@ include 'header.php';
               <th style="text-align:right">Kalori</th>
               <th style="text-align:right">Harga</th>
               <th>Info</th>
+              <th style="text-align:center">Aksi Catat</th>
             </tr>
           </thead>
           <tbody>
@@ -593,6 +678,22 @@ include 'header.php';
                 <td style="text-align:right;white-space:nowrap"><?= (int)$m['kalori'] ?> kkal</td>
                 <td style="text-align:right;white-space:nowrap"><?= rp($m['harga']) ?></td>
                 <td><?= $m['vegetarian'] ? '<span class="badge kategori-normal" style="font-size:.75em">Veg</span>' : '' ?></td>
+                <td style="text-align:center">
+                  <form method="post" style="display:inline-flex;gap:4px;align-items:center;margin:0">
+                    <input type="hidden" name="aksi" value="catat_manual">
+                    <input type="hidden" name="csrf_token" value="<?= h($csrf_token) ?>">
+                    <input type="hidden" name="menu_id" value="<?= (int)$m['id'] ?>">
+                    <select name="porsi" class="menu-porsi" style="height:30px;padding:1px 6px;font-size:0.75rem;margin:0">
+                      <option value="0.5">½</option>
+                      <option value="1" selected>1</option>
+                      <option value="1.5">1½</option>
+                      <option value="2">2</option>
+                    </select>
+                    <button type="submit" class="tombol kecil" style="padding:0 8px;height:30px;font-size:0.75rem;margin:0">
+                      + Catat
+                    </button>
+                  </form>
+                </td>
               </tr>
             <?php endforeach; ?>
           </tbody>

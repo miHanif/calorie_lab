@@ -9,7 +9,7 @@ CREATE TABLE users (
   nama          VARCHAR(100) NOT NULL,
   email         VARCHAR(100) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,       
-  role          ENUM('user','admin') NOT NULL DEFAULT 'user',
+  role          ENUM('user','admin','pakar') NOT NULL DEFAULT 'user',
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -155,4 +155,26 @@ CREATE TABLE menu_harian_item (
   FOREIGN KEY (menu_harian_id) REFERENCES menu_harian(id) ON DELETE CASCADE,
   FOREIGN KEY (menu_id) REFERENCES menu_diet(id) ON DELETE CASCADE,
   FOREIGN KEY (catatan_makan_id) REFERENCES catatan_makan(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+CREATE TABLE saran_pakar (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  pakar_id         INT NOT NULL,
+  judul            VARCHAR(200) NOT NULL,
+  isi_saran        TEXT NOT NULL,
+  target_kategori  ENUM('semua','kurus','normal','gemuk','obesitas') NOT NULL DEFAULT 'semua',
+  created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (pakar_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE catatan_gizi (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  menu_id     INT NOT NULL,
+  pakar_id    INT NOT NULL,
+  catatan     TEXT NOT NULL,
+  status      ENUM('disetujui','perlu_tinjau','ditandai') NOT NULL DEFAULT 'disetujui',
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (menu_id)  REFERENCES menu_diet(id) ON DELETE CASCADE,
+  FOREIGN KEY (pakar_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

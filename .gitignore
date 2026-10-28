@@ -2,3 +2,5 @@
 *.log
 Thumbs.db
 koneksi.php
+
+sess_*

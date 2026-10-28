@@ -121,11 +121,7 @@ include 'header.php';
       <!-- Form diblokir: user masih punya rencana aktif -->
       <div class="alert error" style="margin-bottom:16px">
         <strong>Pembaruan BMI tidak tersedia.</strong><br>
-        Kamu masih memiliki rencana diet aktif
-        <?php if ($rencana_aktif['berat_target']): ?>
-          (target berat: <b><?= h(number_format((float)$rencana_aktif['berat_target'], 1, ',', '.')) ?> kg</b>)
-        <?php endif; ?>.
-        Selesaikan atau tandai rencana tersebut sebagai selesai terlebih dahulu sebelum memperbarui data BMI.
+        Kamu masih memiliki rencana diet aktif<?php if ($rencana_aktif['berat_target']): ?> (target berat: <b><?= h(number_format((float)$rencana_aktif['berat_target'], 1, ',', '.')) ?>&nbsp;kg</b>)<?php endif; ?>. Selesaikan atau tandai rencana tersebut sebagai selesai terlebih dahulu sebelum memperbarui data BMI.
       </div>
       <a class="tombol penuh" href="rencana.php">Lihat rencana diet aktif</a>
 
@@ -183,6 +179,34 @@ include 'header.php';
     <?php else: ?>
       <div class="kosong">Hasilnya akan muncul di sini setelah kamu menekan <b>Simpan</b>.</div>
     <?php endif; ?>
+
+    <div class="kartu" style="margin-top: 20px; padding: 20px;">
+      <h3 style="font-size: 1.05rem; margin-bottom: 8px;">
+        Klasifikasi Standar BMI (Kemenkes RI)
+      </h3>
+      <p class="teks-redup" style="font-size: 0.85rem; margin-bottom: 14px;">
+        Berikut adalah rentang acuan indeks massa tubuh yang digunakan dalam sistem:
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--latar); border-radius: var(--radius-kecil); font-size: 0.88rem;">
+          <span class="badge kategori-kurus" style="font-size: 0.78rem;">Kurus / Underweight</span>
+          <strong>&lt; 18,5</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--latar); border-radius: var(--radius-kecil); font-size: 0.88rem;">
+          <span class="badge kategori-normal" style="font-size: 0.78rem;">Normal (Ideal)</span>
+          <strong>18,5 – 25,0</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--latar); border-radius: var(--radius-kecil); font-size: 0.88rem;">
+          <span class="badge kategori-gemuk" style="font-size: 0.78rem;">Gemuk / Overweight</span>
+          <strong>25,1 – 27,0</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--latar); border-radius: var(--radius-kecil); font-size: 0.88rem;">
+          <span class="badge kategori-obesitas" style="font-size: 0.78rem;">Obesitas</span>
+          <strong>&gt; 27,0</strong>
+        </div>
+      </div>
+    </div>
+
     <p class="catatan">BMI hanya indikator kasar dan kurang cocok untuk atlet, ibu hamil, dan usia di bawah 18 tahun. Target kalori bersifat perkiraan.</p>
   </div>
 </div>

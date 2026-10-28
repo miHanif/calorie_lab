@@ -136,13 +136,6 @@ $q = $pdo->prepare('SELECT DISTINCT tanggal FROM catatan_makan WHERE user_id = ?
 $q->execute([$uid, $tanggal_maks_lihat]);
 $tanggal_riwayat = $q->fetchAll(PDO::FETCH_COLUMN);
 
-$ikon_waktu = [
-    'pagi'    => '🌅',
-    'siang'   => '☀️',
-    'malam'   => '🌙',
-    'camilan' => '🍎',
-];
-
 $judul = 'Catatan Kalori';
 include 'header.php';
 ?>
@@ -280,7 +273,7 @@ include 'header.php';
         <article class="menu-kartu">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px">
             <span class="badge-waktu badge-waktu-<?= h($m['waktu_makan']) ?>">
-              <?= $ikon_waktu[$m['waktu_makan']] ?? '' ?> <?= h(ucfirst($m['waktu_makan'])) ?>
+              <?= h(ucfirst($m['waktu_makan'])) ?>
             </span>
             <?php if ($m['vegetarian']): ?>
               <span class="badge kategori-normal" style="font-size:.72rem;padding:2px 8px">Veg</span>

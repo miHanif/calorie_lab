@@ -41,6 +41,11 @@ $tautan_navigasi = [
     </div>
     <div class="nav-menu">
       <?php if ($sudah_login): ?>
+        <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
+          <a class="nav-link-subtle" style="font-weight:700; color:var(--hijau);" href="admin_dashboard.php">Panel Admin</a>
+        <?php elseif (($_SESSION['role'] ?? '') === 'pakar'): ?>
+          <a class="nav-link-subtle" style="font-weight:700; color:var(--hijau);" href="pakar_dashboard.php">Portal Pakar</a>
+        <?php endif; ?>
         <a class="nav-link-subtle" href="dashboard.php">Dashboard</a>
         <a class="tombol kecil tombol-keluar" href="logout.php">Keluar (<?= h($_SESSION['nama'] ?? 'Akun') ?>)</a>
       <?php else: ?>
@@ -68,6 +73,19 @@ $tautan_navigasi = [
             <span><?= h($label_navigasi) ?></span>
           </a>
         <?php endforeach; ?>
+        <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
+          <div style="margin: 16px 12px 8px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--abu); font-weight: 700;">Admin Panel</div>
+          <a class="sidebar-link <?= strpos($halaman_aktif, 'admin_') === 0 ? 'aktif' : '' ?>" href="admin_dashboard.php">
+            <span class="sidebar-number">00</span>
+            <span>Kelola Calorie Lab</span>
+          </a>
+        <?php elseif (($_SESSION['role'] ?? '') === 'pakar'): ?>
+          <div style="margin: 16px 12px 8px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--abu); font-weight: 700;">Portal Pakar</div>
+          <a class="sidebar-link <?= strpos($halaman_aktif, 'pakar_') === 0 ? 'aktif' : '' ?>" href="pakar_dashboard.php">
+            <span class="sidebar-number">00</span>
+            <span>Portal Pakar Gizi</span>
+          </a>
+        <?php endif; ?>
       </nav>
       <div class="sidebar-note">
         <strong>Calorie Lab</strong>

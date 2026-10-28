@@ -249,7 +249,7 @@ button {
   transform: translateY(-1px);
 }
 
-.nav-menu a.tombol {
+.nav-menu a.tombol:not(.tombol-keluar):not(.tombol-sekunder):not(.sekunder) {
   color: #fff !important;
 }
 
@@ -303,14 +303,14 @@ button {
   font-size: 1rem;
 }
 
-.tombol.garis, .tombol-sekunder {
+.tombol.garis, .tombol-sekunder, .tombol.sekunder {
   background: transparent !important;
   color: var(--hijau) !important;
   border: 1.5px solid var(--garis) !important;
   box-shadow: none !important;
 }
 
-.tombol.garis:hover, .tombol-sekunder:hover {
+.tombol.garis:hover, .tombol-sekunder:hover, .tombol.sekunder:hover {
   background: var(--mint) !important;
   color: var(--gelap) !important;
   border-color: #CAD7CF !important;
@@ -318,7 +318,7 @@ button {
   box-shadow: var(--bayangan-halus) !important;
 }
 
-.tombol.garis:active, .tombol-sekunder:active {
+.tombol.garis:active, .tombol-sekunder:active, .tombol.sekunder:active {
   transform: translateY(0) scale(0.98);
 }
 
@@ -372,9 +372,10 @@ button {
 
 .tombol-keluar {
   background: var(--permukaan) !important;
-  color: var(--teks-redup) !important;
-  border: 1px solid var(--garis) !important;
-  box-shadow: none !important;
+  color: var(--gelap) !important;
+  border: 1.5px solid var(--garis) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  font-weight: 600 !important;
 }
 
 .tombol-keluar:hover {
@@ -619,9 +620,56 @@ button {
 
 .fitur {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 960px) {
+  .fitur {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .fitur {
+    grid-template-columns: 1fr;
+  }
+}
+
+.alur-langkah-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 22px;
-  padding-bottom: 56px;
+}
+
+@media (max-width: 820px) {
+  .alur-langkah-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.kartu-tautan {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 14px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--hijau);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.kartu-link {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.kartu-link:hover .kartu-tautan {
+  transform: translateX(4px);
+  color: var(--hijau-hover);
 }
 
 /* ==========================================================================
@@ -776,16 +824,58 @@ input[type="checkbox"] {
   accent-color: var(--hijau);
 }
 
+/* Password Input Group with Show/Hide Toggle */
+.password-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.password-input-group input {
+  padding-right: 110px !important; /* Ruang aman agar karakter sandi tidak tertutup tombol 'Sembunyikan' */
+}
+
+.toggle-pass-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--teks-redup);
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: var(--radius-pil);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  line-height: 1;
+  transition: all 0.18s ease;
+}
+
+.toggle-pass-btn:hover {
+  color: var(--gelap);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.toggle-pass-btn:focus-visible {
+  outline: 2px solid var(--hijau);
+  outline-offset: 1px;
+}
+
 /* Status Alerts (Soft & Rounded) */
 .alert {
   padding: 14px 18px;
   border-radius: var(--radius-sedang);
   margin-bottom: 16px;
   font-size: 0.92rem;
+  line-height: 1.6;
   border: 1px solid transparent;
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 
 .alert.error {
@@ -1470,6 +1560,286 @@ input[type="checkbox"] {
   color: #FFFFFF !important;
   border-color: var(--hijau);
   box-shadow: 0 4px 14px rgba(58, 105, 83, 0.22);
+}
+
+/* ==========================================================================
+   PAGINATION CONTROLS
+   ========================================================================== */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.pagination-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--gelap);
+  background: var(--permukaan);
+  border: 1.5px solid var(--garis);
+  border-radius: var(--radius-pil);
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.pagination-nav-btn:hover:not(.disabled) {
+  background: var(--mint);
+  border-color: #CAD7CF;
+  color: var(--hijau-gelap);
+  transform: translateY(-1px);
+}
+
+.pagination-nav-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+  background: var(--latar);
+}
+
+.pagination-number-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  font-size: 0.88rem;
+  font-weight: 650;
+  border-radius: var(--radius-pil);
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: var(--permukaan);
+  color: var(--gelap);
+  border: 1.5px solid var(--garis);
+}
+
+.pagination-number-btn:hover:not(.aktif) {
+  background: var(--mint);
+  border-color: #CAD7CF;
+  color: var(--hijau-gelap);
+  transform: translateY(-1px);
+}
+
+.pagination-number-btn.aktif {
+  background: var(--hijau);
+  color: #FFFFFF !important;
+  border-color: var(--hijau);
+  box-shadow: 0 4px 12px rgba(58, 105, 83, 0.28);
+  font-weight: 750;
+  cursor: default;
+}
+
+.pagination-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 36px;
+  color: var(--teks-redup);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+/* ==========================================================================
+   ADMIN DASHBOARD ENHANCEMENTS
+   ========================================================================== */
+.admin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.admin-stat-card {
+  background: var(--permukaan);
+  border: 1px solid var(--garis);
+  border-radius: var(--radius-kartu);
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4px 16px rgba(44, 42, 38, 0.04);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.admin-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--bayangan-kartu);
+}
+
+.admin-stat-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--teks-redup);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-stat-value {
+  font-size: clamp(1.85rem, 3.5vw, 2.3rem);
+  font-weight: 800;
+  color: var(--gelap);
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+  margin: 10px 0 6px;
+}
+
+.admin-stat-sub {
+  font-size: 0.83rem;
+  color: var(--teks-redup);
+}
+
+@media (max-width: 992px) {
+  .admin-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-stat-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-dashboard-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+  margin-bottom: 20px;
+}
+
+.admin-dashboard-layout > .kartu {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .admin-dashboard-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* Cocok untuk Kategori Bar */
+.cocok-kategori-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px dashed var(--garis);
+  margin-top: 2px;
+}
+
+.cocok-kategori-label {
+  color: var(--teks-redup);
+  font-size: 0.82rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+}
+
+.cocok-kategori-list {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cocok-kategori-list .badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: var(--radius-pil);
+  margin: 0;
+  vertical-align: middle;
+}
+
+/* Admin Table & Badges Alignment */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  table-layout: fixed;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 14px 16px;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--latar);
+}
+
+.admin-table th.col-role,
+.admin-table td.col-role {
+  text-align: center;
+  width: 120px;
+}
+
+.admin-table thead tr {
+  border-bottom: 1px solid var(--garis);
+}
+
+.admin-table th {
+  color: var(--abu);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badge-role {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 26px;
+  font-size: 0.76rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  border-radius: var(--radius-pil);
+  line-height: 1;
+  text-transform: uppercase;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.badge-role-admin {
+  background: #E6EFF4;
+  color: #385E75;
+  border: 1px solid #D2E3ED;
+}
+
+.badge-role-user {
+  background: #E6F0EB;
+  color: #27523C;
+  border: 1px solid #D1E5DA;
+}
+
+.badge-role-pakar {
+  background: #EEF2FF;
+  color: #3730A3;
+  border: 1px solid #C7D2FE;
 }
 
 /* ==========================================================================

@@ -40,6 +40,41 @@ if ($rencana) {
 // Target kalori: utamakan rencana aktif, kalau tidak ada pakai BMI
 $target_kalori = $rencana['target_kalori'] ?? ($bmi['target_kalori'] ?? null);
 
+// Saran dari pakar — ambil yang relevan dengan kategori BMI user
+$kategori_user = $bmi['kategori'] ?? null;
+$kode_kategori = null;
+if ($kategori_user) {
+    // Normalisasi nama kategori ke kode
+    $map_kode = ['Kurus'=>'kurus','Normal'=>'normal','Gemuk'=>'gemuk','Obesitas'=>'obesitas'];
+    $kode_kategori = $map_kode[$kategori_user] ?? null;
+}
+$saran_pakar = [];
+try {
+    if ($kode_kategori) {
+        $st_sp = $pdo->prepare("
+            SELECT sp.judul, sp.isi_saran, sp.target_kategori, u.nama AS nama_pakar, sp.created_at
+            FROM saran_pakar sp
+            JOIN users u ON u.id = sp.pakar_id
+            WHERE sp.target_kategori IN ('semua', ?)
+            ORDER BY sp.created_at DESC
+            LIMIT 3
+        ");
+        $st_sp->execute([$kode_kategori]);
+    } else {
+        $st_sp = $pdo->query("
+            SELECT sp.judul, sp.isi_saran, sp.target_kategori, u.nama AS nama_pakar, sp.created_at
+            FROM saran_pakar sp
+            JOIN users u ON u.id = sp.pakar_id
+            WHERE sp.target_kategori = 'semua'
+            ORDER BY sp.created_at DESC
+            LIMIT 3
+        ");
+    }
+    $saran_pakar = $st_sp->fetchAll();
+} catch (Exception $e) {
+    // Tabel belum ada, abaikan
+}
+
 $st = $pdo->prepare('SELECT COUNT(*) FROM catatan_makan WHERE user_id = ? AND tanggal = ?');
 $st->execute([$uid, $hari_ini]);
 $jumlah_makanan_hari_ini = (int)$st->fetchColumn();
@@ -206,5 +241,32 @@ include 'header.php';
   </a>
 </div>
 </section>
+
+<?php if (!empty($saran_pakar)): ?>
+<section style="margin-top: 28px;" aria-labelledby="saran-pakar-judul">
+  <div class="dashboard-section-heading" style="margin-bottom: 14px;">
+    <div>
+      <h3 id="saran-pakar-judul" style="margin:0 0 4px;">Saran dari Pakar Gizi</h3>
+      <p class="teks-redup" style="margin:0; font-size:0.88rem;">Panduan nutrisi yang disiapkan khusus untuk Anda.</p>
+    </div>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <?php foreach ($saran_pakar as $sp): ?>
+      <div class="kartu" style="padding: 18px 20px; border-left: 3px solid #818CF8;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px;">
+          <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--gelap);"><?= h($sp['judul']) ?></h4>
+          <span style="font-size: 0.72rem; color: var(--teks-redup); white-space: nowrap;">
+            <?= date('d M Y', strtotime($sp['created_at'])) ?>
+          </span>
+        </div>
+        <p style="margin: 0 0 8px; font-size: 0.88rem; color: var(--gelap); line-height: 1.65; white-space: pre-wrap;"><?= h($sp['isi_saran']) ?></p>
+        <span style="font-size: 0.75rem; color: #4F46E5; font-weight: 600;">
+          Oleh <?= h($sp['nama_pakar']) ?>
+        </span>
+      </div>
+    <?php endforeach; ?>
+  </div>
+</section>
+<?php endif; ?>
 
 <?php include 'footer.php'; ?>
