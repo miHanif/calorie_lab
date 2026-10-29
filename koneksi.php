@@ -3,7 +3,7 @@ date_default_timezone_set('Asia/Jakarta');
 
 $host = 'localhost';
 $db   = 'calorie_lab';
-$user = '';   
+$user = 'root';   
 $pass = '';       
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -26,6 +26,25 @@ function h($teks) {
 function wajib_login() {
     if (!isset($_SESSION['user_id'])) {
         header('Location: login.php');
+        exit;
+    }
+}
+
+function wajib_admin() {
+    wajib_login();
+    if (($_SESSION['role'] ?? '') !== 'admin') {
+        header('Location: dashboard.php');
+        exit;
+    }
+}
+
+function wajib_pakar() {
+    if (!isset($_SESSION['user_id'])) {
+        header('Location: login_pakar.php');
+        exit;
+    }
+    if (!in_array($_SESSION['role'] ?? '', ['pakar', 'admin'], true)) {
+        header('Location: dashboard.php');
         exit;
     }
 }
