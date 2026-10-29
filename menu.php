@@ -1,5 +1,5 @@
-<?php
-require_once 'koneksi.php';
+﻿<?php
+require_once __DIR__ . '/config/koneksi.php';
 wajib_login();
 
 if (!function_exists('rp')) {
@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'catat_d
     exit;
 }
 
-// ── Catat makanan manual langsung dari kartu menu ──────────────────────
+// â”€â”€ Catat makanan manual langsung dari kartu menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'catat_manual') {
     $token   = $_POST['csrf_token'] ?? '';
     $menu_id = (int)($_POST['menu_id'] ?? 0);
@@ -142,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'catat_m
     exit;
 }
 
-// ── Batalkan menu harian hari ini ─────────────────────────────────────────
+// â”€â”€ Batalkan menu harian hari ini â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['aksi'] ?? '') === 'hapus_menu_harian') {
     $token = $_POST['csrf_token'] ?? '';
     if (!csrf_valid($token, 'csrf_token_menu_harian')) {
@@ -364,7 +364,7 @@ $halaman    = min($halaman, max(1, $total_hal));
 $menu_tampil = array_slice($menu, ($halaman - 1) * $per_hal, $per_hal);
 
 $judul = 'Menu Rekomendasi';
-include 'header.php';
+include BASE_DIR . 'includes/header.php';
 ?>
 
 <h2>Menu rekomendasi</h2>
@@ -458,7 +458,7 @@ include 'header.php';
     <div class="menu-hari" id="menu-hari">
       <div class="menu-hari-heading">
         <div>
-          <small>TERSIMPAN UNTUK HARI INI · <?= h(date('d-m-Y', strtotime($hari_ini))) ?></small>
+          <small>TERSIMPAN UNTUK HARI INI &middot; <?= h(date('d-m-Y', strtotime($hari_ini))) ?></small>
           <h3>Menu harianmu</h3>
         </div>
         <span class="menu-hari-status">Tersimpan</span>
@@ -477,7 +477,7 @@ include 'header.php';
                   <input type="hidden" name="csrf_token" value="<?= h($csrf_token) ?>">
                   <input type="hidden" name="item_id" value="<?= (int)$m['item_id'] ?>">
                   <select class="menu-porsi" name="porsi" aria-label="Porsi yang dimakan">
-                    <option value="0.5">½ porsi</option>
+                    <option value="0.5">&frac12; porsi</option>
                     <option value="1" selected>1 porsi</option>
                     <option value="1.5">1,5 porsi</option>
                     <option value="2">2 porsi</option>
@@ -558,14 +558,14 @@ include 'header.php';
                 <h4><?= h(date('j', strtotime($plan['tanggal'])) . ' ' . $bulan[(int)date('n', strtotime($plan['tanggal']))] . ' ' . date('Y', strtotime($plan['tanggal']))) ?></h4>
               </div>
               <div class="riwayat-menu-ringkasan">
-                <strong><?= number_format($plan['total_kalori'], 0, ',', '.') ?> kkal · <?= rp($plan['total_harga']) ?></strong>
+                <strong><?= number_format($plan['total_kalori'], 0, ',', '.') ?> kkal &middot; <?= rp($plan['total_harga']) ?></strong>
                 <a href="catatan.php?<?= h(http_build_query(['tanggal' => $plan['tanggal']])) ?>">Lihat catatan tanggal ini</a>
               </div>
             </header>
             <ul>
               <?php foreach ($plan['items'] as $item): ?>
                 <li>
-                  <span><b><?= h(ucfirst($item['waktu_makan'])) ?></b>: <?= h($item['nama_menu']) ?> · <?= (int)$item['kalori'] ?> kkal</span>
+                  <span><b><?= h(ucfirst($item['waktu_makan'])) ?></b>: <?= h($item['nama_menu']) ?> &middot; <?= (int)$item['kalori'] ?> kkal</span>
                   <?php if ($item['catatan_makan_id'] !== null): ?>
                     <span class="menu-tercatat">Sudah dicatat</span>
                   <?php elseif ($plan['tanggal'] > $hari_ini): ?>
@@ -576,7 +576,7 @@ include 'header.php';
                       <input type="hidden" name="csrf_token" value="<?= h($csrf_token) ?>">
                       <input type="hidden" name="item_id" value="<?= (int)$item['item_id'] ?>">
                       <select class="menu-porsi" name="porsi" aria-label="Porsi yang dimakan">
-                        <option value="0.5">½ porsi</option>
+                        <option value="0.5">&frac12; porsi</option>
                         <option value="1" selected>1 porsi</option>
                         <option value="1.5">1,5 porsi</option>
                         <option value="2">2 porsi</option>
@@ -605,11 +605,11 @@ include 'header.php';
         <?php if ($waktu !== ''): ?>
           kategori <b><?= h(ucfirst($waktu)) ?></b>
         <?php endif; ?>
-        <?php if ($total_hal > 1): ?> · Halaman <?= $halaman ?> / <?= $total_hal ?><?php endif; ?>
+        <?php if ($total_hal > 1): ?> &middot; Halaman <?= $halaman ?> / <?= $total_hal ?><?php endif; ?>
       </p>
       <div class="view-toggle" style="display:flex;gap:4px">
-        <a href="?<?= h(http_build_query($params_nav + ['tampilan' => 'grid', 'hal' => $halaman])) ?>" class="tombol kecil <?= $tampilan === 'grid' ? '' : 'tombol-sekunder' ?>" title="Tampilan Grid Menu">⊞ Grid</a>
-        <a href="?<?= h(http_build_query($params_nav + ['tampilan' => 'list', 'hal' => $halaman])) ?>" class="tombol kecil <?= $tampilan === 'list' ? '' : 'tombol-sekunder' ?>" title="Tampilan List Menu">☰ List</a>
+        <a href="?<?= h(http_build_query($params_nav + ['tampilan' => 'grid', 'hal' => $halaman])) ?>" class="tombol kecil <?= $tampilan === 'grid' ? '' : 'tombol-sekunder' ?>" title="Tampilan Grid Menu">Grid</a>
+        <a href="?<?= h(http_build_query($params_nav + ['tampilan' => 'list', 'hal' => $halaman])) ?>" class="tombol kecil <?= $tampilan === 'list' ? '' : 'tombol-sekunder' ?>" title="Tampilan List Menu">List</a>
       </div>
     </div>
 
@@ -638,7 +638,7 @@ include 'header.php';
               <input type="hidden" name="csrf_token" value="<?= h($csrf_token) ?>">
               <input type="hidden" name="menu_id" value="<?= (int)$m['id'] ?>">
               <select name="porsi" class="menu-porsi" style="height: 34px; padding: 2px 8px; font-size: 0.8rem; margin: 0; flex: 1;">
-                <option value="0.5">½ porsi</option>
+                <option value="0.5">&frac12; porsi</option>
                 <option value="1" selected>1 porsi</option>
                 <option value="1.5">1,5 porsi</option>
                 <option value="2">2 porsi</option>
@@ -684,9 +684,9 @@ include 'header.php';
                     <input type="hidden" name="csrf_token" value="<?= h($csrf_token) ?>">
                     <input type="hidden" name="menu_id" value="<?= (int)$m['id'] ?>">
                     <select name="porsi" class="menu-porsi" style="height:30px;padding:1px 6px;font-size:0.75rem;margin:0">
-                      <option value="0.5">½</option>
+                      <option value="0.5">&frac12;</option>
                       <option value="1" selected>1</option>
-                      <option value="1.5">1½</option>
+                      <option value="1.5">1&frac12;</option>
                       <option value="2">2</option>
                     </select>
                     <button type="submit" class="tombol kecil" style="padding:0 8px;height:30px;font-size:0.75rem;margin:0">
@@ -706,7 +706,7 @@ include 'header.php';
         <?php
         $params_nav_hal = $params_nav + ['tampilan' => $tampilan];
         if ($halaman > 1): ?>
-          <a class="tombol tombol-sekunder kecil" href="?<?= h(http_build_query($params_nav_hal + ['hal' => $halaman - 1])) ?>">← Sebelumnya</a>
+          <a class="tombol tombol-sekunder kecil" href="?<?= h(http_build_query($params_nav_hal + ['hal' => $halaman - 1])) ?>"&larr; Sebelumnya</a>
         <?php endif;
         $start = max(1, $halaman - 2);
         $end   = min($total_hal, $halaman + 2);
@@ -714,7 +714,7 @@ include 'header.php';
           <a class="tombol <?= $p === $halaman ? '' : 'tombol-sekunder' ?> kecil" href="?<?= h(http_build_query($params_nav_hal + ['hal' => $p])) ?>"><?= $p ?></a>
         <?php endfor;
         if ($halaman < $total_hal): ?>
-          <a class="tombol tombol-sekunder kecil" href="?<?= h(http_build_query($params_nav_hal + ['hal' => $halaman + 1])) ?>">Berikutnya →</a>
+          <a class="tombol tombol-sekunder kecil" href="?<?= h(http_build_query($params_nav_hal + ['hal' => $halaman + 1])) ?>">Berikutnya &rarr;/a>
         <?php endif; ?>
       </nav>
     <?php endif; ?>
@@ -726,4 +726,7 @@ include 'header.php';
   <p class="catatan">Kalori merupakan perkiraan per porsi standar dan bersifat edukatif, bukan pengganti saran ahli gizi.</p>
 <?php endif; ?>
 
-<?php include 'footer.php'; ?>
+<?php include BASE_DIR . 'includes/footer.php'; ?>
+
+
+

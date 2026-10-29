@@ -1,5 +1,5 @@
-<?php
-require_once 'koneksi.php';
+﻿<?php
+require_once __DIR__ . '/config/koneksi.php';
 wajib_login();
 
 $uid = $_SESSION['user_id'];
@@ -40,7 +40,7 @@ if ($rencana) {
 // Target kalori: utamakan rencana aktif, kalau tidak ada pakai BMI
 $target_kalori = $rencana['target_kalori'] ?? ($bmi['target_kalori'] ?? null);
 
-// Saran dari pakar — ambil yang relevan dengan kategori BMI user
+// Saran dari pakar Ã¢â‚¬â€ ambil yang relevan dengan kategori BMI user
 $kategori_user = $bmi['kategori'] ?? null;
 $kode_kategori = null;
 if ($kategori_user) {
@@ -125,7 +125,7 @@ if (!$bmi) {
 $label_tujuan = ['turun' => 'Menurunkan berat', 'naik' => 'Menaikkan berat', 'pertahankan' => 'Mempertahankan berat'];
 
 $judul = 'Dashboard';
-include 'header.php';
+include BASE_DIR . 'includes/header.php';
 ?>
 
 <header class="dashboard-heading">
@@ -161,7 +161,7 @@ include 'header.php';
       <span class="dashboard-stat-label">Target kalori harian</span>
       <?php if ($target_kalori): ?>
         <strong class="dashboard-stat-value"><?= number_format((float)$target_kalori, 0, ',', '.') ?></strong>
-        <span class="dashboard-stat-note">kkal · perkiraan</span>
+        <span class="dashboard-stat-note">kkal &middot; perkiraan</span>
       <?php else: ?>
         <strong class="dashboard-stat-empty">Belum tersedia</strong>
         <span class="dashboard-stat-note">Hitung BMI untuk melihat perkiraan target.</span>
@@ -197,7 +197,7 @@ include 'header.php';
 <?php if ($menu_harian && (int)$menu_harian['jumlah_menu'] > 0): ?>
   <section class="menu-harian-dashboard" aria-labelledby="menu-harian-judul">
     <div>
-      <span class="dashboard-eyebrow">RENCANA MENU · <?= h(date('d-m-Y', strtotime($hari_ini))) ?></span>
+      <span class="dashboard-eyebrow">RENCANA MENU &middot; <?= h(date('d-m-Y', strtotime($hari_ini))) ?></span>
       <h3 id="menu-harian-judul">Menu harianmu tersimpan</h3>
       <p><?= (int)$menu_harian['jumlah_menu'] ?> pilihan menu tersimpan. Rencana ini tidak otomatis masuk ke catatan makanan.</p>
     </div>
@@ -215,27 +215,27 @@ include 'header.php';
 
 <div class="dashboard-fitur-grid">
   <a class="kartu kartu-link" href="bmi.php">
-    <span class="dashboard-card-label">01 · UKUR</span>
+    <span class="dashboard-card-label">01 &middot; UKUR</span>
     <h3>Hitung BMI</h3>
     <p>Cek kategori tubuh dan target kalori harian.</p>
   </a>
   <a class="kartu kartu-link" href="menu.php">
-    <span class="dashboard-card-label">02 · PILIH</span>
+    <span class="dashboard-card-label">02 &middot; PILIH</span>
     <h3>Menu rekomendasi</h3>
     <p>Menu yang cocok untuk kategori BMI-mu.</p>
   </a>
   <a class="kartu kartu-link" href="catatan.php">
-    <span class="dashboard-card-label">03 · CATAT</span>
+    <span class="dashboard-card-label">03 &middot; CATAT</span>
     <h3>Catatan kalori</h3>
     <p>Catat makanan dan lihat sisa kalori hari ini.</p>
   </a>
   <a class="kartu kartu-link" href="profil.php">
-    <span class="dashboard-card-label">04 · PANTAU</span>
+    <span class="dashboard-card-label">04 &middot; PANTAU</span>
     <h3>Profil dan perkembangan</h3>
     <p>Catat berat badan dan pantau progres dietmu.</p>
   </a>
   <a class="kartu kartu-link" href="rencana.php">
-    <span class="dashboard-card-label">05 · RENCANAKAN</span>
+    <span class="dashboard-card-label">05 &middot; RENCANAKAN</span>
     <h3>Rencana diet</h3>
     <p>Tentukan target berat badan dan durasi dietmu.</p>
   </a>
@@ -269,4 +269,6 @@ include 'header.php';
 </section>
 <?php endif; ?>
 
-<?php include 'footer.php'; ?>
+<?php include BASE_DIR . 'includes/footer.php'; ?>
+
+

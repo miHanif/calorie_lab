@@ -1,5 +1,5 @@
 <?php
-require_once 'koneksi.php';
+require_once dirname(__DIR__) . '/config/koneksi.php';
 wajib_admin();
 
 $csrf = csrf_token('csrf_token_admin_pengguna');
@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_valid($token, 'csrf_token_admin_pengguna')) {
         $_SESSION['pesan_admin_user'] = 'Sesi formulir tidak valid atau kedaluwarsa.';
         $_SESSION['pesan_admin_user_tipe'] = 'error';
-        header('Location: admin_pengguna.php');
+        header('Location: ' . base_url('admin/pengguna.php'));
         exit;
     }
 
@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['pesan_admin_user_tipe'] = 'sukses';
             }
         }
-        header('Location: admin_pengguna.php');
+        header('Location: ' . base_url('admin/pengguna.php'));
         exit;
     }
 
@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($target_uid <= 0) {
         $_SESSION['pesan_admin_user'] = 'ID pengguna tidak valid.';
         $_SESSION['pesan_admin_user_tipe'] = 'error';
-        header('Location: admin_pengguna.php');
+        header('Location: ' . base_url('admin/pengguna.php'));
         exit;
     }
 
@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$target_user) {
         $_SESSION['pesan_admin_user'] = 'Pengguna tidak ditemukan.';
         $_SESSION['pesan_admin_user_tipe'] = 'error';
-        header('Location: admin_pengguna.php');
+        header('Location: ' . base_url('admin/pengguna.php'));
         exit;
     }
 
@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['pesan_admin_user_tipe'] = 'sukses';
             }
         }
-        header('Location: admin_pengguna.php');
+        header('Location: ' . base_url('admin/pengguna.php'));
         exit;
     }
 
@@ -127,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['pesan_admin_user'] = 'Role akun ' . h($target_user['nama']) . ' berhasil diubah menjadi ' . strtoupper($role_baru) . '.';
             $_SESSION['pesan_admin_user_tipe'] = 'sukses';
         }
-        header('Location: admin_pengguna.php');
+        header('Location: ' . base_url('admin/pengguna.php'));
         exit;
     }
 
@@ -144,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['pesan_admin_user'] = 'Kata sandi pengguna ' . h($target_user['nama']) . ' berhasil diperbarui.';
             $_SESSION['pesan_admin_user_tipe'] = 'sukses';
         }
-        header('Location: admin_pengguna.php');
+        header('Location: ' . base_url('admin/pengguna.php'));
         exit;
     }
 
@@ -159,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['pesan_admin_user'] = 'Akun pengguna ' . h($target_user['nama']) . ' berhasil dihapus beserta seluruh riwayat terkait.';
             $_SESSION['pesan_admin_user_tipe'] = 'sukses';
         }
-        header('Location: admin_pengguna.php');
+        header('Location: ' . base_url('admin/pengguna.php'));
         exit;
     }
 }
@@ -208,10 +208,10 @@ $st_data->execute($params);
 $daftar_user = $st_data->fetchAll();
 
 $judul = 'Manajemen Pengguna & Role - Admin';
-include 'header.php';
+include BASE_DIR . 'includes/header.php';
 ?>
 
-<?php include 'admin_nav.php'; ?>
+<?php include __DIR__ . '/nav.php'; ?>
 
 <?php if ($pesan): ?>
   <div class="alert <?= $pesan_tipe === 'error' ? 'error' : 'sukses' ?>"><?= h($pesan) ?></div>
@@ -219,7 +219,7 @@ include 'header.php';
 
 <!-- FILTER DAN PENCARIAN -->
 <div class="kartu" style="padding: 20px; margin-bottom: 20px;">
-  <form method="get" action="admin_pengguna.php" style="display: flex; gap: 10px; flex-wrap: wrap;">
+  <form method="get" action="<?= base_url('admin/pengguna.php') ?>" style="display: flex; gap: 10px; flex-wrap: wrap;">
     <input type="text" name="cari" value="<?= h($cari_user) ?>" placeholder="Cari berdasarkan nama atau email..." style="flex: 2; min-width: 200px; margin: 0;">
     <select name="role" style="flex: 1; min-width: 140px; margin: 0;">
       <option value="">Semua Role</option>
@@ -229,7 +229,7 @@ include 'header.php';
     </select>
     <button type="submit" class="tombol kecil" style="margin: 0; padding: 0 24px;">Filter</button>
     <?php if ($cari_user !== '' || $filter_role !== ''): ?>
-      <a href="admin_pengguna.php" class="tombol sekunder kecil" style="margin: 0;">Reset</a>
+      <a href="<?= base_url('admin/pengguna.php') ?>" class="tombol sekunder kecil" style="margin: 0;">Reset</a>
     <?php endif; ?>
   </form>
 </div>
@@ -291,7 +291,7 @@ include 'header.php';
               <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                 
                 <!-- GANTI ROLE FORM -->
-                <form method="post" action="admin_pengguna.php" style="margin: 0; display: inline-flex; align-items: center; gap: 4px;">
+                <form method="post" action="<?= base_url('admin/pengguna.php') ?>" style="margin: 0; display: inline-flex; align-items: center; gap: 4px;">
                   <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
                   <input type="hidden" name="aksi" value="ubah_role">
                   <input type="hidden" name="target_user_id" value="<?= $u['id'] ?>">
@@ -336,7 +336,7 @@ include 'header.php';
 
                 <!-- HAPUS AKUN -->
                 <?php if (!$is_me): ?>
-                  <form method="post" action="admin_pengguna.php" style="margin: 0; display: inline;"
+                  <form method="post" action="<?= base_url('admin/pengguna.php') ?>" style="margin: 0; display: inline;"
                         onsubmit="return confirm('PERINGATAN: Apakah Anda yakin ingin menghapus akun <?= h(addslashes($u['nama'])) ?>? Seluruh data riwayat dan catatannya akan terhapus permanen.');">
                     <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
                     <input type="hidden" name="aksi" value="hapus_user">
@@ -366,21 +366,21 @@ include 'header.php';
   ?>
   <div style="display: flex; justify-content: center; gap: 6px; margin-top: 20px; flex-wrap: wrap;">
     <?php if ($hal > 1): ?>
-      <a href="admin_pengguna.php?<?= $qs_prefix ?>hal=<?= $hal - 1 ?>" class="tombol sekunder kecil" style="padding: 6px 12px;">Sebelumnya</a>
+      <a href="<?= base_url('admin/pengguna.php?' . $qs_prefix . 'hal=' . ($hal - 1)) ?>" class="tombol sekunder kecil" style="padding: 6px 12px;">Sebelumnya</a>
     <?php endif; ?>
     <?php for ($p = $awal; $p <= $akhir; $p++): ?>
-      <a href="admin_pengguna.php?<?= $qs_prefix ?>hal=<?= $p ?>"
+      <a href="<?= base_url('admin/pengguna.php?' . $qs_prefix . 'hal=' . $p) ?>"
          class="tombol <?= $p === $hal ? '' : 'sekunder' ?> kecil"
          style="padding: 6px 12px;"><?= $p ?></a>
     <?php endfor; ?>
     <?php if ($hal < $total_hal): ?>
-      <a href="admin_pengguna.php?<?= $qs_prefix ?>hal=<?= $hal + 1 ?>" class="tombol sekunder kecil" style="padding: 6px 12px;">Berikutnya</a>
+      <a href="<?= base_url('admin/pengguna.php?' . $qs_prefix . 'hal=' . ($hal + 1)) ?>" class="tombol sekunder kecil" style="padding: 6px 12px;">Berikutnya</a>
     <?php endif; ?>
   </div>
 <?php endif; ?>
 
 <!-- FORM TERSEMBUNYI UNTUK PROSES RESET PASSWORD VIA PROMPT -->
-<form id="form-reset-pass" method="post" action="admin_pengguna.php" style="display: none;">
+<form id="form-reset-pass" method="post" action="<?= base_url('admin/pengguna.php') ?>" style="display: none;">
   <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
   <input type="hidden" name="aksi" value="reset_pass">
   <input type="hidden" name="target_user_id" value="">
@@ -393,7 +393,7 @@ include 'header.php';
     <h3 style="margin:0 0 6px; font-size:1.2rem; font-weight:800; color:var(--gelap);">Tambah Pengguna Baru</h3>
     <p class="teks-redup" style="margin:0 0 18px; font-size:0.84rem;">Daftarkan akun baru ke sistem dengan role yang diinginkan.</p>
 
-    <form method="post" action="admin_pengguna.php">
+    <form method="post" action="<?= base_url('admin/pengguna.php') ?>">
       <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
       <input type="hidden" name="aksi" value="tambah_user">
 
@@ -427,7 +427,7 @@ include 'header.php';
     <h3 style="margin:0 0 6px; font-size:1.2rem; font-weight:800; color:var(--gelap);">Edit Profil Pengguna</h3>
     <p class="teks-redup" style="margin:0 0 18px; font-size:0.84rem;">Perbarui nama lengkap atau alamat email pengguna.</p>
 
-    <form method="post" action="admin_pengguna.php">
+    <form method="post" action="<?= base_url('admin/pengguna.php') ?>">
       <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
       <input type="hidden" name="aksi" value="edit_user">
       <input type="hidden" name="target_user_id" id="edit-user-id" value="">
@@ -480,4 +480,4 @@ include 'header.php';
   });
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include BASE_DIR . 'includes/footer.php'; ?>

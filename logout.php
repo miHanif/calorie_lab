@@ -1,5 +1,5 @@
 <?php
-require_once 'koneksi.php';
+require_once __DIR__ . '/config/koneksi.php';
 
 $_SESSION = [];
 if (ini_get("session.use_cookies")) {
@@ -11,5 +11,6 @@ if (ini_get("session.use_cookies")) {
 }
 session_destroy();
 
-header('Location: index.php');
+header('Location: ' . base_url('index.php'));
 exit;
+

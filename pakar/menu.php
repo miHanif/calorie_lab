@@ -1,9 +1,9 @@
 <?php
-require_once 'koneksi.php';
+require_once dirname(__DIR__) . '/config/koneksi.php';
 wajib_pakar();
 
 $judul = 'Tinjauan Menu Gizi - Calorie Lab';
-include 'header.php';
+include BASE_DIR . 'includes/header.php';
 $pakar_id = (int)$_SESSION['user_id'];
 $csrf = csrf_token('csrf_pakar_menu');
 
@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_valid($token, 'csrf_pakar_menu')) {
         $_SESSION['pesan_pakar_menu'] = 'Sesi formulir tidak valid.';
         $_SESSION['pesan_pakar_menu_tipe'] = 'error';
-        header('Location: pakar_menu.php');
+        header('Location: ' . base_url('pakar/menu.php'));
         exit;
     }
 
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $_SESSION['pesan_pakar_menu_tipe'] = 'sukses';
         }
-        header('Location: pakar_menu.php');
+        header('Location: ' . base_url('pakar/menu.php'));
         exit;
     }
 
@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['pesan_pakar_menu'] = 'Catatan gizi dihapus.';
             $_SESSION['pesan_pakar_menu_tipe'] = 'sukses';
         }
-        header('Location: pakar_menu.php');
+        header('Location: ' . base_url('pakar/menu.php'));
         exit;
     }
 }
@@ -127,7 +127,7 @@ $label_status = ['disetujui'=>'Disetujui','perlu_tinjau'=>'Perlu Tinjau','ditand
 $warna_status = ['disetujui'=>'#D1FAE5;color:#065F46','perlu_tinjau'=>'#FEF3C7;color:#92400E','ditandai'=>'#FEE2E2;color:#991B1B'];
 $label_waktu  = ['pagi'=>'Pagi','siang'=>'Siang','malam'=>'Malam','camilan'=>'Camilan'];
 
-include 'pakar_nav.php';
+include __DIR__ . '/nav.php';
 ?>
 
 <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 20px;">
@@ -145,7 +145,7 @@ include 'pakar_nav.php';
 <?php endif; ?>
 
 <!-- Filter Bar -->
-<form method="get" action="pakar_menu.php" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+<form method="get" action="<?= base_url('pakar/menu.php') ?>" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
   <input type="text" name="cari" placeholder="Cari nama menu..." value="<?= h($cari) ?>"
          style="flex: 1; min-width: 180px; padding: 8px 12px; font-size: 0.88rem;">
   <select name="waktu" style="padding: 8px 12px; font-size: 0.88rem; border: 1px solid var(--garis); border-radius: var(--radius-kecil); background: var(--permukaan);">
@@ -167,7 +167,7 @@ include 'pakar_nav.php';
   </select>
   <button type="submit" class="tombol kecil" style="padding: 8px 18px; font-size: 0.88rem;">Cari</button>
   <?php if ($cari || $wkt || $veg || $status_f): ?>
-    <a href="pakar_menu.php" class="tombol sekunder kecil" style="padding: 8px 14px; font-size: 0.88rem;">Reset</a>
+    <a href="<?= base_url('pakar/menu.php') ?>" class="tombol sekunder kecil" style="padding: 8px 14px; font-size: 0.88rem;">Reset</a>
   <?php endif; ?>
 </form>
 
@@ -222,7 +222,7 @@ include 'pakar_nav.php';
                 <?= $m['catatan_id'] ? 'Edit Catatan' : 'Beri Catatan' ?>
               </button>
               <?php if ($m['catatan_id']): ?>
-                <form method="post" action="pakar_menu.php" style="display:inline; margin-left:4px;"
+                <form method="post" action="<?= base_url('pakar/menu.php') ?>" style="display:inline; margin-left:4px;"
                       onsubmit="return confirm('Hapus catatan gizi untuk menu ini?');">
                   <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
                   <input type="hidden" name="aksi" value="hapus_catatan">
@@ -248,15 +248,15 @@ include 'pakar_nav.php';
   ?>
   <div style="display: flex; justify-content: center; gap: 6px; margin-top: 20px; flex-wrap: wrap;">
     <?php if ($hal > 1): ?>
-      <a href="pakar_menu.php?<?= $qs_prefix ?>hal=<?= $hal - 1 ?>" class="tombol sekunder kecil" style="padding: 6px 12px;">Sebelumnya</a>
+      <a href="<?= base_url('pakar/menu.php?' . $qs_prefix . 'hal=' . ($hal - 1)) ?>" class="tombol sekunder kecil" style="padding: 6px 12px;">Sebelumnya</a>
     <?php endif; ?>
     <?php for ($p = $awal; $p <= $akhir; $p++): ?>
-      <a href="pakar_menu.php?<?= $qs_prefix ?>hal=<?= $p ?>"
+      <a href="<?= base_url('pakar/menu.php?' . $qs_prefix . 'hal=' . $p) ?>"
          class="tombol <?= $p === $hal ? '' : 'sekunder' ?> kecil"
          style="padding: 6px 12px;"><?= $p ?></a>
     <?php endfor; ?>
     <?php if ($hal < $total_hal): ?>
-      <a href="pakar_menu.php?<?= $qs_prefix ?>hal=<?= $hal + 1 ?>" class="tombol sekunder kecil" style="padding: 6px 12px;">Berikutnya</a>
+      <a href="<?= base_url('pakar/menu.php?' . $qs_prefix . 'hal=' . ($hal + 1)) ?>" class="tombol sekunder kecil" style="padding: 6px 12px;">Berikutnya</a>
     <?php endif; ?>
   </div>
 <?php endif; ?>
@@ -267,7 +267,7 @@ include 'pakar_nav.php';
     <h3 id="modal-judul" style="margin:0 0 4px; font-size:1.1rem; font-weight:800; color:var(--gelap);"></h3>
     <p style="margin:0 0 18px; font-size:0.82rem; color:var(--teks-redup);">Tambahkan catatan atau penilaian gizi untuk menu ini.</p>
 
-    <form method="post" action="pakar_menu.php" id="form-catatan">
+    <form method="post" action="<?= base_url('pakar/menu.php') ?>" id="form-catatan">
       <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
       <input type="hidden" name="aksi" value="simpan_catatan">
       <input type="hidden" name="menu_id" id="modal-menu-id" value="">
@@ -313,4 +313,4 @@ include 'pakar_nav.php';
   });
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include BASE_DIR . 'includes/footer.php'; ?>

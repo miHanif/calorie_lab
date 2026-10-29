@@ -1,5 +1,5 @@
 <?php
-require_once 'koneksi.php';
+require_once dirname(__DIR__) . '/config/koneksi.php';
 wajib_admin();
 
 $csrf = csrf_token('csrf_token_admin_makanan');
@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_valid($token, 'csrf_token_admin_makanan')) {
         $_SESSION['pesan_admin'] = 'Sesi formulir tidak valid atau kedaluwarsa. Silakan ulangi.';
         $_SESSION['pesan_admin_tipe'] = 'error';
-        header('Location: admin_makanan.php');
+        header('Location: ' . base_url('admin/makanan.php'));
         exit;
     }
 
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['pesan_admin'] = 'Menu makanan berhasil dihapus dari basis data.';
             $_SESSION['pesan_admin_tipe'] = 'sukses';
         }
-        header('Location: admin_makanan.php');
+        header('Location: ' . base_url('admin/makanan.php'));
         exit;
     }
 
@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $pdo->commit();
                 $_SESSION['pesan_admin_tipe'] = 'sukses';
-                header('Location: admin_makanan.php');
+                header('Location: ' . base_url('admin/makanan.php'));
                 exit;
             } catch (Exception $e) {
                 $pdo->rollBack();
@@ -179,10 +179,10 @@ $st_daftar->execute($params);
 $daftar_menu = $st_daftar->fetchAll();
 
 $judul = 'Kelola Makanan - Admin';
-include 'header.php';
+include BASE_DIR . 'includes/header.php';
 ?>
 
-<?php include 'admin_nav.php'; ?>
+<?php include __DIR__ . '/nav.php'; ?>
 
 <?php if ($pesan): ?>
   <div class="alert <?= $pesan_tipe === 'error' ? 'error' : 'sukses' ?>"><?= h($pesan) ?></div>
@@ -198,7 +198,7 @@ include 'header.php';
       <?= $item_edit ? 'Edit rincian data makanan #' . $item_edit['id'] : 'Tambahkan item baru ke dalam katalog sistem rekomendasi diet.' ?>
     </p>
 
-    <form method="post" action="admin_makanan.php">
+    <form method="post" action="<?= base_url('admin/makanan.php') ?>">
       <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
       <input type="hidden" name="aksi" value="simpan">
       <input type="hidden" name="id" value="<?= (int)($item_edit['id'] ?? 0) ?>">
@@ -258,7 +258,7 @@ include 'header.php';
       <div style="display: flex; gap: 10px;">
         <button type="submit" class="tombol penuh"><?= $item_edit ? 'Simpan Perubahan' : 'Tambahkan Makanan' ?></button>
         <?php if ($item_edit): ?>
-          <a href="admin_makanan.php" class="tombol sekunder" style="text-align: center;">Batal</a>
+          <a href="<?= base_url('admin/makanan.php') ?>" class="tombol sekunder" style="text-align: center;">Batal</a>
         <?php endif; ?>
       </div>
     </form>
@@ -267,7 +267,7 @@ include 'header.php';
   <!-- DAFTAR & PENCARIAN MAKANAN -->
   <div>
     <div class="kartu" style="padding: 20px; margin-bottom: 16px;">
-      <form method="get" action="admin_makanan.php" style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <form method="get" action="<?= base_url('admin/makanan.php') ?>" style="display: flex; gap: 10px; flex-wrap: wrap;">
         <input type="text" name="cari" value="<?= h($kata_kunci) ?>" placeholder="Cari nama makanan..." style="flex: 2; min-width: 160px; margin: 0;">
         <select name="waktu" style="flex: 1; min-width: 130px; margin: 0;">
           <option value="">Semua Waktu</option>
@@ -278,7 +278,7 @@ include 'header.php';
         </select>
         <button type="submit" class="tombol kecil" style="margin: 0; padding: 0 20px;">Cari</button>
         <?php if ($kata_kunci !== '' || $filter_waktu !== ''): ?>
-          <a href="admin_makanan.php" class="tombol sekunder kecil" style="margin: 0;">Reset</a>
+          <a href="<?= base_url('admin/makanan.php') ?>" class="tombol sekunder kecil" style="margin: 0;">Reset</a>
         <?php endif; ?>
       </form>
     </div>
@@ -319,10 +319,10 @@ include 'header.php';
 
               <!-- AKSI EDIT & HAPUS -->
               <div style="display: flex; gap: 8px; align-items: center;">
-                <a href="admin_makanan.php?edit=<?= $m['id'] ?>" class="tombol sekunder kecil" style="padding: 6px 12px; font-size: 0.8rem;">
+                <a href="<?= base_url('admin/makanan.php?edit=' . $m['id']) ?>" class="tombol sekunder kecil" style="padding: 6px 12px; font-size: 0.8rem;">
                   Edit
                 </a>
-                <form method="post" action="admin_makanan.php" onsubmit="return confirm('Apakah Anda yakin ingin menghapus menu \'<?= h(addslashes($m['nama_menu'])) ?>\'?');" style="margin:0;">
+                <form method="post" action="<?= base_url('admin/makanan.php') ?>" onsubmit="return confirm('Apakah Anda yakin ingin menghapus menu \'<?= h(addslashes($m['nama_menu'])) ?>\'?');" style="margin:0;">
                   <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
                   <input type="hidden" name="aksi" value="hapus">
                   <input type="hidden" name="id" value="<?= $m['id'] ?>">
@@ -364,7 +364,7 @@ include 'header.php';
             $qs = ['halaman' => $hal];
             if ($kata_kunci !== '') $qs['cari'] = $kata_kunci;
             if ($filter_waktu !== '') $qs['waktu'] = $filter_waktu;
-            return 'admin_makanan.php?' . http_build_query($qs);
+            return base_url('admin/makanan.php?' . http_build_query($qs));
         };
 
         // Window pagination maksimal 5 angka di sekitar halaman saat ini
@@ -433,4 +433,4 @@ include 'header.php';
   </div>
 </div>
 
-<?php include 'footer.php'; ?>
+<?php include BASE_DIR . 'includes/footer.php'; ?>

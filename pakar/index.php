@@ -1,9 +1,9 @@
 <?php
-require_once 'koneksi.php';
+require_once dirname(__DIR__) . '/config/koneksi.php';
 wajib_pakar();
 
 $judul = 'Ringkasan & Statistik Pakar Gizi';
-include 'header.php';
+include BASE_DIR . 'includes/header.php';
 
 // ── 1. Metrik Statistik Umum (Anonim) ───────────────────────────
 $total_user = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE role = 'user'")->fetchColumn();
@@ -97,7 +97,7 @@ $saran_terbaru = $saran_terbaru->fetchAll();
 $total_tinjauan_pakar = (int)$pdo->query("SELECT COUNT(*) FROM catatan_gizi WHERE pakar_id = $pakar_id")->fetchColumn();
 ?>
 
-<?php include 'pakar_nav.php'; ?>
+<?php include __DIR__ . '/nav.php'; ?>
 
 <!-- STATISTIK UTAMA (Tema Calorie Lab) -->
 <div class="admin-stat-grid" style="margin-bottom: 24px;">
@@ -226,7 +226,7 @@ $total_tinjauan_pakar = (int)$pdo->query("SELECT COUNT(*) FROM catatan_gizi WHER
         Menu makanan yang paling banyak dipilih pengguna. Jadikan acuan dalam memberikan rekomendasi dan evaluasi nutrisi.
       </p>
     </div>
-    <a href="pakar_menu.php" class="tombol sekunder kecil">Buka Tinjauan Menu</a>
+    <a href="<?= base_url('pakar/menu.php') ?>" class="tombol sekunder kecil">Buka Tinjauan Menu</a>
   </div>
 
   <?php if (empty($menu_populer)): ?>
@@ -280,13 +280,13 @@ $total_tinjauan_pakar = (int)$pdo->query("SELECT COUNT(*) FROM catatan_gizi WHER
         Saran yang Anda tulis akan otomatis tampil di dashboard pengguna sesuai kategori BMI mereka.
       </p>
     </div>
-    <a href="pakar_saran.php" class="tombol sekunder kecil">Kelola Semua Saran</a>
+    <a href="<?= base_url('pakar/saran.php') ?>" class="tombol sekunder kecil">Kelola Semua Saran</a>
   </div>
 
   <?php if (empty($saran_terbaru)): ?>
     <div style="padding: 20px; background: var(--latar); border: 1px dashed var(--garis); border-radius: var(--radius-kecil); text-align: center;">
       <p class="teks-redup" style="margin: 0 0 10px; font-size: 0.9rem;">Anda belum membuat catatan saran edukasi untuk pengguna.</p>
-      <a href="pakar_saran.php" class="tombol kecil">Tulis Saran Pertama</a>
+      <a href="<?= base_url('pakar/saran.php') ?>" class="tombol kecil">Tulis Saran Pertama</a>
     </div>
   <?php else: ?>
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;">
@@ -305,7 +305,7 @@ $total_tinjauan_pakar = (int)$pdo->query("SELECT COUNT(*) FROM catatan_gizi WHER
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; color: var(--teks-redup); border-top: 1px solid var(--garis); padding-top: 8px; margin-top: auto;">
             <span><?= date('d M Y', strtotime($s['created_at'])) ?></span>
-            <a href="pakar_saran.php?edit=<?= (int)$s['id'] ?>" style="color: var(--hijau); font-weight: 600; text-decoration: none;">Ubah Saran</a>
+            <a href="<?= base_url('pakar/saran.php?edit=' . (int)$s['id']) ?>" style="color: var(--hijau); font-weight: 600; text-decoration: none;">Ubah Saran</a>
           </div>
         </div>
       <?php endforeach; ?>
@@ -313,4 +313,4 @@ $total_tinjauan_pakar = (int)$pdo->query("SELECT COUNT(*) FROM catatan_gizi WHER
   <?php endif; ?>
 </div>
 
-<?php include 'footer.php'; ?>
+<?php include BASE_DIR . 'includes/footer.php'; ?>

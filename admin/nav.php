@@ -1,5 +1,4 @@
 <?php
-// Navigasi tab admin
 $admin_halaman = basename($_SERVER['PHP_SELF'] ?? '');
 ?>
 <div class="admin-header-card kartu" style="margin-bottom: 24px; padding: 22px 24px; background: linear-gradient(135deg, #FFFFFF 0%, #F5F3EF 100%); border: 1px solid var(--garis);">
@@ -14,18 +13,18 @@ $admin_halaman = basename($_SERVER['PHP_SELF'] ?? '');
       </p>
     </div>
     <div>
-      <a href="dashboard.php" class="tombol sekunder kecil">← Ke Aplikasi Pengguna</a>
+      <a href="<?= base_url('dashboard.php') ?>" class="tombol sekunder kecil">Ke Aplikasi Pengguna</a>
     </div>
   </div>
 
   <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; border-top: 1px solid var(--garis); padding-top: 16px;">
-    <a href="admin_dashboard.php" class="kategori-waktu-tab <?= $admin_halaman === 'admin_dashboard.php' ? 'aktif' : '' ?>" style="text-decoration:none;">
+    <a href="<?= base_url('admin/index.php') ?>" class="kategori-waktu-tab <?= in_array($admin_halaman, ['index.php', 'admin_dashboard.php'], true) ? 'aktif' : '' ?>" style="text-decoration:none;">
       Ringkasan & Statistik
     </a>
-    <a href="admin_makanan.php" class="kategori-waktu-tab <?= $admin_halaman === 'admin_makanan.php' ? 'aktif' : '' ?>" style="text-decoration:none;">
+    <a href="<?= base_url('admin/makanan.php') ?>" class="kategori-waktu-tab <?= in_array($admin_halaman, ['makanan.php', 'admin_makanan.php'], true) ? 'aktif' : '' ?>" style="text-decoration:none;">
       Basis Data Makanan (CRUD)
     </a>
-    <a href="admin_pengguna.php" class="kategori-waktu-tab <?= $admin_halaman === 'admin_pengguna.php' ? 'aktif' : '' ?>" style="text-decoration:none;">
+    <a href="<?= base_url('admin/pengguna.php') ?>" class="kategori-waktu-tab <?= in_array($admin_halaman, ['pengguna.php', 'admin_pengguna.php'], true) ? 'aktif' : '' ?>" style="text-decoration:none;">
       Manajemen Pengguna
     </a>
   </div>

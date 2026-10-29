@@ -1,5 +1,5 @@
-<?php
-require_once 'koneksi.php';
+﻿<?php
+require_once __DIR__ . '/config/koneksi.php';
 wajib_login();
 
 $uid      = $_SESSION['user_id'];
@@ -137,7 +137,7 @@ $q->execute([$uid, $tanggal_maks_lihat]);
 $tanggal_riwayat = $q->fetchAll(PDO::FETCH_COLUMN);
 
 $judul = 'Catatan Kalori';
-include 'header.php';
+include BASE_DIR . 'includes/header.php';
 ?>
 
 <h2>Catatan kalori</h2>
@@ -242,7 +242,7 @@ include 'header.php';
   </div>
 
   <div class="hasil" style="margin-bottom:20px">
-    <h3 style="margin-bottom:6px">Makanan yang dicatat · <?= h($tanggal_teks) ?></h3>
+    <h3 style="margin-bottom:6px">Makanan yang dicatat &middot; <?= h($tanggal_teks) ?></h3>
     <?php if (!$catatan): ?>
       <p class="teks-redup" style="margin:8px 0 0">Belum ada makanan yang dicatat untuk tanggal ini. Tambahkan di atas jika kamu ingin mengisi riwayatnya.</p>
     <?php else: foreach ($catatan as $c):
@@ -297,4 +297,6 @@ include 'header.php';
   <p class="catatan">Kalori merupakan perkiraan per porsi standar dan bersifat edukatif, bukan pengganti saran ahli gizi.</p>
 <?php endif; ?>
 
-<?php include 'footer.php'; ?>
+<?php include BASE_DIR . 'includes/footer.php'; ?>
+
+

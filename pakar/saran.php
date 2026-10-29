@@ -1,9 +1,9 @@
 <?php
-require_once 'koneksi.php';
+require_once dirname(__DIR__) . '/config/koneksi.php';
 wajib_pakar();
 
 $judul = 'Saran untuk Pengguna - Calorie Lab';
-include 'header.php';
+include BASE_DIR . 'includes/header.php';
 $pakar_id = (int)$_SESSION['user_id'];
 $csrf = csrf_token('csrf_pakar_saran');
 
@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_valid($token, 'csrf_pakar_saran')) {
         $_SESSION['pesan_pakar_saran'] = 'Sesi formulir tidak valid.';
         $_SESSION['pesan_pakar_saran_tipe'] = 'error';
-        header('Location: pakar_saran.php');
+        header('Location: ' . base_url('pakar/saran.php'));
         exit;
     }
 
@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $_SESSION['pesan_pakar_saran_tipe'] = 'sukses';
         }
-        header('Location: pakar_saran.php');
+        header('Location: ' . base_url('pakar/saran.php'));
         exit;
     }
 
@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['pesan_pakar_saran'] = 'Saran berhasil dihapus.';
             $_SESSION['pesan_pakar_saran_tipe'] = 'sukses';
         }
-        header('Location: pakar_saran.php');
+        header('Location: ' . base_url('pakar/saran.php'));
         exit;
     }
 }
@@ -103,7 +103,7 @@ $label_kat = [
     'obesitas' => 'Obesitas',
 ];
 
-include 'pakar_nav.php';
+include __DIR__ . '/nav.php';
 ?>
 
 <?php if ($pesan): ?>
@@ -116,9 +116,9 @@ include 'pakar_nav.php';
   <div>
     <!-- Filter Kategori -->
     <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
-      <a href="pakar_saran.php" class="tombol <?= $filter_kat === '' ? '' : 'sekunder' ?> kecil" style="font-size:0.82rem; padding:6px 14px;">Semua Kategori</a>
+      <a href="<?= base_url('pakar/saran.php') ?>" class="tombol <?= $filter_kat === '' ? '' : 'sekunder' ?> kecil" style="font-size:0.82rem; padding:6px 14px;">Semua Kategori</a>
       <?php foreach (['kurus','normal','gemuk','obesitas'] as $k): ?>
-        <a href="pakar_saran.php?kat=<?= $k ?>"
+        <a href="<?= base_url('pakar/saran.php?kat=' . $k) ?>"
            class="tombol <?= $filter_kat === $k ? '' : 'sekunder' ?> kecil"
            style="font-size:0.82rem; padding:6px 14px;">
           <?= h($label_kat[$k]) ?>
@@ -156,10 +156,10 @@ include 'pakar_nav.php';
             </div>
             <p style="margin: 0 0 16px; font-size: 0.9rem; color: var(--gelap); line-height: 1.65; white-space: pre-wrap;"><?= h($s['isi_saran']) ?></p>
             <div style="display: flex; gap: 8px;">
-              <a href="pakar_saran.php?edit=<?= $s['id'] ?>"
+              <a href="<?= base_url('pakar/saran.php?edit=' . $s['id']) ?>"
                  class="tombol sekunder kecil"
                  style="font-size: 0.78rem; padding: 6px 14px;">Edit Saran</a>
-              <form method="post" action="pakar_saran.php" style="margin:0;" onsubmit="return confirm('Hapus saran edukasi ini?');">
+              <form method="post" action="<?= base_url('pakar/saran.php') ?>" style="margin:0;" onsubmit="return confirm('Hapus saran edukasi ini?');">
                 <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
                 <input type="hidden" name="aksi" value="hapus">
                 <input type="hidden" name="saran_id" value="<?= $s['id'] ?>">
@@ -179,7 +179,7 @@ include 'pakar_nav.php';
         <?= $edit_data ? 'Edit Saran Edukasi' : 'Tulis Saran Baru' ?>
       </h3>
 
-      <form method="post" action="pakar_saran.php">
+      <form method="post" action="<?= base_url('pakar/saran.php') ?>">
         <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
         <input type="hidden" name="aksi" value="<?= $edit_data ? 'edit' : 'tambah' ?>">
         <?php if ($edit_data): ?>
@@ -210,7 +210,7 @@ include 'pakar_nav.php';
             <?= $edit_data ? 'Perbarui Saran' : 'Simpan & Publikasikan' ?>
           </button>
           <?php if ($edit_data): ?>
-            <a href="pakar_saran.php" class="tombol sekunder kecil" style="padding: 10px 14px;">Batal</a>
+            <a href="<?= base_url('pakar/saran.php') ?>" class="tombol sekunder kecil" style="padding: 10px 14px;">Batal</a>
           <?php endif; ?>
         </div>
       </form>
@@ -225,4 +225,4 @@ include 'pakar_nav.php';
 
 </div>
 
-<?php include 'footer.php'; ?>
+<?php include BASE_DIR . 'includes/footer.php'; ?>

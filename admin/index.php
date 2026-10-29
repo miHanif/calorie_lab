@@ -1,9 +1,9 @@
 <?php
-require_once 'koneksi.php';
+require_once dirname(__DIR__) . '/config/koneksi.php';
 wajib_admin();
 
 $judul = 'Ringkasan & Statistik Admin';
-include 'header.php';
+include BASE_DIR . 'includes/header.php';
 
 // Ambil metrik statistik
 $total_users = (int)$pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
@@ -58,7 +58,7 @@ $users_terbaru = $pdo->query("
 ")->fetchAll();
 ?>
 
-<?php include 'admin_nav.php'; ?>
+<?php include __DIR__ . '/nav.php'; ?>
 
 <!-- STAT KARTU RINGKASAN -->
 <div class="admin-stat-grid">
@@ -156,7 +156,7 @@ $users_terbaru = $pdo->query("
   <div class="kartu" style="padding: 24px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
       <h3 style="font-size: 1.15rem; margin: 0;">Pengguna Terdaftar Baru</h3>
-      <a href="admin_pengguna.php" class="tombol sekunder kecil">Kelola Semua</a>
+      <a href="<?= base_url('admin/pengguna.php') ?>" class="tombol sekunder kecil">Kelola Semua</a>
     </div>
 
     <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -211,4 +211,4 @@ $users_terbaru = $pdo->query("
   </div>
 </div>
 
-<?php include 'footer.php'; ?>
+<?php include BASE_DIR . 'includes/footer.php'; ?>

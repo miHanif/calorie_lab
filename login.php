@@ -1,8 +1,8 @@
-<?php
-require_once 'koneksi.php';
+﻿<?php
+require_once __DIR__ . '/config/koneksi.php';
 
 if (isset($_SESSION['user_id'])) {
-    header('Location: dashboard.php');
+    header('Location: ' . base_url('dashboard.php'));
     exit;
 }
 
@@ -30,11 +30,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['nama']    = $user['nama'];
             $_SESSION['role']    = $user['role'];
             if ($user['role'] === 'admin') {
-                header('Location: admin_dashboard.php');
+                header('Location: ' . base_url('admin/index.php'));
             } elseif ($user['role'] === 'pakar') {
-                header('Location: pakar_dashboard.php');
+                header('Location: ' . base_url('pakar/index.php'));
             } else {
-                header('Location: dashboard.php');
+                header('Location: ' . base_url('dashboard.php'));
             }
             exit;
         }
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $judul = 'Masuk';
-include 'header.php';
+include BASE_DIR . 'includes/header.php';
 ?>
 
 <div class="kotak-form">
@@ -73,12 +73,12 @@ include 'header.php';
     <button type="submit" class="tombol penuh">Masuk</button>
   </form>
 
-  <p class="catatan">Belum punya akun? <a href="register.php">Daftar</a></p>
+  <p class="catatan">Belum punya akun? <a href="<?= base_url('register.php') ?>">Daftar</a></p>
   <p class="catatan" style="margin-top: 10px; font-size: 0.8rem;">
-    Pemilik website? <a href="login_admin.php" style="color: var(--hijau); font-weight: 600;">Login Administrator</a>
+    Pemilik website? <a href="<?= base_url('admin/login.php') ?>" style="color: var(--hijau); font-weight: 600;">Login Administrator</a>
   </p>
   <p class="catatan" style="margin-top: 6px; font-size: 0.8rem;">
-    Ahli gizi / pakar? <a href="login_pakar.php" style="color: #4F46E5; font-weight: 600;">Login Portal Pakar</a>
+    Ahli gizi / pakar? <a href="<?= base_url('pakar/login.php') ?>" style="color: #4F46E5; font-weight: 600;">Login Portal Pakar</a>
   </p>
 </div>
 
@@ -94,4 +94,5 @@ include 'header.php';
   }
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include BASE_DIR . 'includes/footer.php'; ?>
+

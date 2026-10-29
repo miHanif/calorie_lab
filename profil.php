@@ -1,5 +1,5 @@
-<?php
-require_once 'koneksi.php';
+﻿<?php
+require_once __DIR__ . '/config/koneksi.php';
 wajib_login();
 
 $uid      = $_SESSION['user_id'];
@@ -173,7 +173,7 @@ if ($aktif) {
 }
 
 $judul = 'Profil dan Perkembangan';
-include 'header.php';
+include BASE_DIR . 'includes/header.php';
 ?>
 
 <h2>Profil dan perkembangan</h2>
@@ -287,4 +287,5 @@ include 'header.php';
 
 <p class="catatan">Perhitungan bersifat perkiraan dan edukatif, bukan pengganti saran dokter atau ahli gizi.</p>
 
-<?php include 'footer.php'; ?>
+<?php include BASE_DIR . 'includes/footer.php'; ?>
+

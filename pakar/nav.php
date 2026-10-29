@@ -14,18 +14,18 @@ $pakar_halaman = basename($_SERVER['PHP_SELF'] ?? '');
       </p>
     </div>
     <div>
-      <a href="dashboard.php" class="tombol sekunder kecil">Ke Aplikasi Pengguna</a>
+      <a href="<?= base_url('dashboard.php') ?>" class="tombol sekunder kecil">Ke Aplikasi Pengguna</a>
     </div>
   </div>
 
   <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; border-top: 1px solid var(--garis); padding-top: 16px;">
-    <a href="pakar_dashboard.php" class="kategori-waktu-tab <?= $pakar_halaman === 'pakar_dashboard.php' ? 'aktif' : '' ?>" style="text-decoration:none;">
+    <a href="<?= base_url('pakar/index.php') ?>" class="kategori-waktu-tab <?= in_array($pakar_halaman, ['index.php', 'pakar_dashboard.php'], true) ? 'aktif' : '' ?>" style="text-decoration:none;">
       Ringkasan & Statistik
     </a>
-    <a href="pakar_menu.php" class="kategori-waktu-tab <?= $pakar_halaman === 'pakar_menu.php' ? 'aktif' : '' ?>" style="text-decoration:none;">
+    <a href="<?= base_url('pakar/menu.php') ?>" class="kategori-waktu-tab <?= in_array($pakar_halaman, ['menu.php', 'pakar_menu.php'], true) ? 'aktif' : '' ?>" style="text-decoration:none;">
       Tinjauan Menu Gizi
     </a>
-    <a href="pakar_saran.php" class="kategori-waktu-tab <?= $pakar_halaman === 'pakar_saran.php' ? 'aktif' : '' ?>" style="text-decoration:none;">
+    <a href="<?= base_url('pakar/saran.php') ?>" class="kategori-waktu-tab <?= in_array($pakar_halaman, ['saran.php', 'pakar_saran.php'], true) ? 'aktif' : '' ?>" style="text-decoration:none;">
       Saran untuk Pengguna
     </a>
   </div>

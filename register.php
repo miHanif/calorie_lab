@@ -1,8 +1,8 @@
 <?php
-require_once 'koneksi.php';
+require_once __DIR__ . '/config/koneksi.php';
 
 if (isset($_SESSION['user_id'])) {
-    header('Location: dashboard.php');
+    header('Location: ' . base_url('dashboard.php'));
     exit;
 }
 
@@ -31,14 +31,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $simpan = $pdo->prepare('INSERT INTO users (nama, email, password_hash) VALUES (?, ?, ?)');
             $simpan->execute([$nama, $email, password_hash($pass, PASSWORD_DEFAULT)]);
             $_SESSION['pesan'] = 'Akun berhasil dibuat. Silakan masuk.';
-            header('Location: login.php');
+            header('Location: ' . base_url('login.php'));
             exit;
         }
     }
 }
 
 $judul = 'Daftar';
-include 'header.php';
+include BASE_DIR . 'includes/header.php';
 ?>
 
 <div class="kotak-form">
@@ -83,4 +83,5 @@ include 'header.php';
   }
 </script>
 
-<?php include 'footer.php'; ?>
+<?php include BASE_DIR . 'includes/footer.php'; ?>
+

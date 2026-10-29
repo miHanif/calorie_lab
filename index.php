@@ -1,14 +1,15 @@
 <?php
-session_start();
+require_once __DIR__ . '/config/koneksi.php';
+
 $sudah_login = isset($_SESSION['user_id']);
 $nama = $_SESSION['nama'] ?? '';
 $role = $_SESSION['role'] ?? 'user';
 
 // Tentukan URL dashboard sesuai role
 $url_dashboard = match($role) {
-    'admin' => 'admin_dashboard.php',
-    'pakar' => 'pakar_dashboard.php',
-    default => 'dashboard.php',
+    'admin' => base_url('admin/index.php'),
+    'pakar' => base_url('pakar/index.php'),
+    default => base_url('dashboard.php'),
 };
 ?>
 <!DOCTYPE html>
@@ -20,7 +21,7 @@ $url_dashboard = match($role) {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styling.css">
+  <link rel="stylesheet" href="<?= base_url('assets/css/styling.css') ?>">
 </head>
 <body>
 
@@ -28,18 +29,18 @@ $url_dashboard = match($role) {
 <nav class="navbar">
   <div class="container nav-isi">
     <div class="nav-brand">
-      <a class="logo" href="index.php">
-        <span class="logo-ikon" aria-hidden="true">🌿</span>
+      <a class="logo" href="<?= base_url('index.php') ?>">
+        <span class="logo-ikon" aria-hidden="true" style="font-size:0.85rem; font-weight:800; background:var(--mint); color:var(--hijau); width:28px; height:28px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;">CL</span>
         <span class="logo-teks">Calorie <em>Lab</em></span>
       </a>
     </div>
     <div class="nav-menu">
       <?php if ($sudah_login): ?>
         <a href="<?= htmlspecialchars($url_dashboard) ?>">Dashboard</a>
-        <a class="tombol kecil" href="logout.php">Keluar</a>
+        <a class="tombol kecil" href="<?= base_url('logout.php') ?>">Keluar</a>
       <?php else: ?>
-        <a href="login.php">Masuk</a>
-        <a class="tombol kecil" href="register.php">Daftar Akun</a>
+        <a href="<?= base_url('login.php') ?>">Masuk</a>
+        <a class="tombol kecil" href="<?= base_url('register.php') ?>">Daftar Akun</a>
       <?php endif; ?>
     </div>
   </div>
@@ -56,16 +57,16 @@ $url_dashboard = match($role) {
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:28px;">
       <?php if ($sudah_login): ?>
         <?php if ($role === 'pakar'): ?>
-          <a class="tombol tombol-besar" href="pakar_dashboard.php">Buka Portal Pakar</a>
+          <a class="tombol tombol-besar" href="<?= base_url('pakar/index.php') ?>">Buka Portal Pakar</a>
         <?php elseif ($role === 'admin'): ?>
-          <a class="tombol tombol-besar" href="admin_dashboard.php">Buka Panel Admin</a>
+          <a class="tombol tombol-besar" href="<?= base_url('admin/index.php') ?>">Buka Panel Admin</a>
         <?php else: ?>
-          <a class="tombol tombol-besar" href="dashboard.php">Buka Dashboard Saya &rarr;</a>
-          <a class="tombol tombol-sekunder tombol-besar" href="menu.php">Lihat Menu Rekomendasi</a>
+          <a class="tombol tombol-besar" href="<?= base_url('dashboard.php') ?>">Buka Dashboard Saya &rarr;</a>
+          <a class="tombol tombol-sekunder tombol-besar" href="<?= base_url('menu.php') ?>">Lihat Menu Rekomendasi</a>
         <?php endif; ?>
       <?php else: ?>
-        <a class="tombol tombol-besar" href="register.php">Mulai Hitung BMI Gratis →</a>
-        <a class="tombol tombol-sekunder tombol-besar" href="login.php">Sudah punya akun? Masuk</a>
+        <a class="tombol tombol-besar" href="<?= base_url('register.php') ?>">Mulai Hitung BMI Gratis →</a>
+        <a class="tombol tombol-sekunder tombol-besar" href="<?= base_url('login.php') ?>">Sudah punya akun? Masuk</a>
       <?php endif; ?>
     </div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding-top:20px;border-top:1px solid var(--garis);font-size:0.84rem;color:var(--teks-redup);">

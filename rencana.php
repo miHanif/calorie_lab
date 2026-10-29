@@ -1,5 +1,5 @@
-<?php
-require_once 'koneksi.php';
+﻿<?php
+require_once __DIR__ . '/config/koneksi.php';
 wajib_login();
 
 $uid      = $_SESSION['user_id'];
@@ -126,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $judul = 'Rencana Diet';
-include 'header.php';
+include BASE_DIR . 'includes/header.php';
 ?>
 
 <h2>Rencana diet</h2>
@@ -248,4 +248,5 @@ include 'header.php';
   </script>
 <?php endif; ?>
 
-<?php include 'footer.php'; ?>
+<?php include BASE_DIR . 'includes/footer.php'; ?>
+

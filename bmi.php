@@ -1,5 +1,5 @@
-<?php
-require_once 'koneksi.php';
+﻿<?php
+require_once __DIR__ . '/config/koneksi.php';
 wajib_login();
 
 $uid  = $_SESSION['user_id'];
@@ -29,7 +29,7 @@ $st_last = $pdo->prepare('SELECT rb.*, kb.nama AS kat_nama, kb.kode AS kat_kode,
 $st_last->execute([$uid]);
 $riwayat_terakhir = $st_last->fetch();
 
-// ── Apakah form diblokir? ──────────────────────────────────────────────────
+// â”€â”€ Apakah form diblokir? â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Blokir jika: sudah pernah input BMI DAN masih punya rencana diet aktif
 // (artinya target belum selesai/diselesaikan)
 $form_diblokir = $riwayat_terakhir && $rencana_aktif;
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($tinggi < 100 || $tinggi > 230 || $berat < 20 || $berat > 250
             || $usia < 10 || $usia > 100 || !in_array($jk, ['L', 'P'], true)) {
-            $_SESSION['pesan_bmi']      = 'Periksa isianmu. Tinggi 100–230 cm, berat 20–250 kg, usia 10–100 tahun.';
+            $_SESSION['pesan_bmi']      = 'Periksa isianmu. Tinggi 100â€“230 cm, berat 20â€“250 kg, usia 10â€“100 tahun.';
             $_SESSION['pesan_bmi_tipe'] = 'error';
         } else {
             // 1. Hitung BMI
@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Redirect PRG — mencegah submit ulang saat refresh
+    // Redirect PRG â€” mencegah submit ulang saat refresh
     header('Location: bmi.php');
     exit;
 }
@@ -104,7 +104,7 @@ $val_jk     = $riwayat_terakhir['jenis_kelamin'] ?? 'L';
 $val_aktif  = '1.2';
 
 $judul = 'Hitung BMI';
-include 'header.php';
+include BASE_DIR . 'includes/header.php';
 ?>
 
 <h2>Hitung BMI</h2>
@@ -194,11 +194,11 @@ include 'header.php';
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--latar); border-radius: var(--radius-kecil); font-size: 0.88rem;">
           <span class="badge kategori-normal" style="font-size: 0.78rem;">Normal (Ideal)</span>
-          <strong>18,5 – 25,0</strong>
+          <strong>18,5 &ndash; 25,0</strong>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--latar); border-radius: var(--radius-kecil); font-size: 0.88rem;">
           <span class="badge kategori-gemuk" style="font-size: 0.78rem;">Gemuk / Overweight</span>
-          <strong>25,1 – 27,0</strong>
+          <strong>25,1 &ndash; 27,0</strong>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--latar); border-radius: var(--radius-kecil); font-size: 0.88rem;">
           <span class="badge kategori-obesitas" style="font-size: 0.78rem;">Obesitas</span>
@@ -211,4 +211,7 @@ include 'header.php';
   </div>
 </div>
 
-<?php include 'footer.php'; ?>
+<?php include BASE_DIR . 'includes/footer.php'; ?>
+
+
+

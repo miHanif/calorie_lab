@@ -1,5 +1,5 @@
 <?php
-require_once 'koneksi.php';
+require_once dirname(__DIR__) . '/config/koneksi.php';
 
 // Inisialisasi variabel pesan
 $error = '';
@@ -8,10 +8,10 @@ $pesan = '';
 // Deteksi status sesi pengguna saat ini
 if (isset($_SESSION['user_id'])) {
     if (($_SESSION['role'] ?? '') === 'admin') {
-        header('Location: admin_dashboard.php');
+        header('Location: ' . base_url('admin/index.php'));
         exit;
     } elseif (($_SESSION['role'] ?? '') === 'pakar') {
-        header('Location: pakar_dashboard.php');
+        header('Location: ' . base_url('pakar/index.php'));
         exit;
     } else {
         // User login sebagai role 'user'
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['nama']    = $user['nama'];
                 $_SESSION['role']    = $user['role'];
-                header('Location: admin_dashboard.php');
+                header('Location: ' . base_url('admin/index.php'));
                 exit;
             }
         } else {
@@ -76,7 +76,7 @@ $judul = 'Login Administrator';
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styling.css">
+  <link rel="stylesheet" href="<?= base_url('assets/css/styling.css') ?>">
   <style>
     .admin-login-wrapper {
       min-height: 100vh;
@@ -117,7 +117,7 @@ $judul = 'Login Administrator';
     <div class="alert error" style="margin-bottom: 20px; font-size: 0.88rem;"><?= $error ?></div>
   <?php endif; ?>
 
-  <form method="post" action="login_admin.php" autocomplete="on">
+  <form method="post" action="<?= base_url('admin/login.php') ?>" autocomplete="on">
     <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
 
     <label for="email" style="font-size: 0.88rem; margin-top: 0;">Email Administrator</label>
@@ -138,7 +138,7 @@ $judul = 'Login Administrator';
 
   <?php if (isset($_SESSION['user_id']) && ($_SESSION['role'] ?? '') !== 'admin'): ?>
     <div style="margin-top: 14px; text-align: center;">
-      <a href="logout.php" class="tombol sekunder kecil" style="font-size: 0.8rem; padding: 6px 14px; width: 100%;">
+      <a href="<?= base_url('logout.php') ?>" class="tombol sekunder kecil" style="font-size: 0.8rem; padding: 6px 14px; width: 100%;">
         Keluar dari Akun Saat Ini (<?= h($_SESSION['nama'] ?? '') ?>)
       </a>
     </div>
@@ -146,17 +146,17 @@ $judul = 'Login Administrator';
 
   <div style="margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--garis); text-align: center; font-size: 0.85rem;">
     <span class="teks-redup">Bukan administrator?</span>
-    <a href="login.php" style="font-weight: 600; color: var(--hijau); text-decoration: none; margin-left: 4px;">
+    <a href="<?= base_url('login.php') ?>" style="font-weight: 600; color: var(--hijau); text-decoration: none; margin-left: 4px;">
       Masuk sebagai Pengguna
     </a>
     &nbsp;&bull;&nbsp;
-    <a href="login_pakar.php" style="font-weight: 600; color: #4F46E5; text-decoration: none;">
+    <a href="<?= base_url('pakar/login.php') ?>" style="font-weight: 600; color: #4F46E5; text-decoration: none;">
       Portal Pakar
     </a>
   </div>
 
   <div style="text-align: center; margin-top: 12px;">
-    <a href="index.php" class="teks-redup" style="font-size: 0.8rem; text-decoration: none;">
+    <a href="<?= base_url('index.php') ?>" class="teks-redup" style="font-size: 0.8rem; text-decoration: none;">
       Kembali ke Beranda
     </a>
   </div>
