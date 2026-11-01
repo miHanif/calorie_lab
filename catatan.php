@@ -5,7 +5,7 @@ wajib_login();
 $uid      = $_SESSION['user_id'];
 $hari_ini = date('Y-m-d');
 $porsi_ok = [0.5, 1.0, 1.5, 2.0];
-$bulan = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
+$bulan = ['', 'Januari', 'Februarii', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
           'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
 if (!function_exists('nf')) {
