@@ -8,6 +8,18 @@ $user = 'root';
 $pass = '';       
 
 if (session_status() === PHP_SESSION_NONE && php_sapi_name() !== 'cli') {
+    // Pengamanan Cookie Sesi Modern (HttpOnly, SameSite, Secure jika HTTPS)
+    $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+             || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path'     => '/',
+        'domain'   => '',
+        'secure'   => $is_https,
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
     session_start();
 }
 
