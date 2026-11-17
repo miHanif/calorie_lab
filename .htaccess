@@ -1,0 +1,21 @@
+# 1. Matikan tampilan daftar folder (mencegah orang mengintip isi direktori)
+Options -Indexes
+
+# 2. Lindungi file sensitif agar tidak bisa diakses/diunduh langsung lewat URL
+<FilesMatch "(^\.env|secret\.php|\.gitignore|\.sql|\.log|\.bak)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 3. Otomatis alihkan ke HTTPS aman (hanya berlaku di server hosting, tidak mengganggu localhost)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:[0-9]+)?$ [NC]
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>

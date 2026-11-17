@@ -22,6 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Sesi formulir kedaluwarsa. Silakan muat ulang halaman.';
     } elseif (mb_strlen($nama) < 2 || mb_strlen($nama) > 100 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Isi nama lengkap yang valid (2-100 karakter) dan gunakan format email yang benar.';
+    } elseif (!validasi_domain_email($email)) {
+        $error = 'Domain email tidak ditemukan atau tidak dapat menerima email. Gunakan alamat email aktif yang sebenarnya.';
     } elseif (strlen($pass) < 6 || strlen($pass) > 72) {
         $error = 'Kata sandi minimal 6 karakter dan maksimal 72 karakter.';
     } else {

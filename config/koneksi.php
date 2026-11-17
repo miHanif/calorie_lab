@@ -102,3 +102,26 @@ function csrf_token($kunci = 'csrf_token') {
 function csrf_valid($token, $kunci = 'csrf_token') {
     return is_string($token) && !empty($_SESSION[$kunci]) && hash_equals($_SESSION[$kunci], $token);
 }
+
+/**
+ * Validasi apakah domain email benar-benar ada di internet (memiliki MX/A record)
+ * Mengabaikan pengecekan jika koneksi offline sehingga tetap aman di lingkungan lokal.
+ */
+function validasi_domain_email($email) {
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return false;
+    }
+    $domain = substr(strrchr($email, '@'), 1);
+    if (empty($domain)) return false;
+
+    if (function_exists('checkdnsrr')) {
+        static $dns_tersedia = null;
+        if ($dns_tersedia === null) {
+            $dns_tersedia = @checkdnsrr('google.com', 'A') || @checkdnsrr('google.com', 'MX');
+        }
+        if ($dns_tersedia) {
+            return @checkdnsrr($domain, 'MX') || @checkdnsrr($domain, 'A');
+        }
+    }
+    return true;
+}

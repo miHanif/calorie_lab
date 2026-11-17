@@ -71,6 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Gelar/jabatan profesional wajib diisi (maks. 50 karakter).';
         } elseif (!filter_var($f['email'], FILTER_VALIDATE_EMAIL)) {
             $error = 'Format email tidak valid.';
+        } elseif (!validasi_domain_email($f['email'])) {
+            $error = 'Domain email tidak ditemukan atau tidak dapat menerima email. Gunakan alamat email aktif yang sebenarnya.';
         } elseif ($f['spesialisasi'] === '') {
             $error = 'Silakan pilih bidang spesialisasi.';
         } elseif (mb_strlen($f['institusi']) < 3) {
@@ -271,14 +273,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .login-submit:hover { background: var(--hijau-hover); box-shadow: 0 6px 20px rgba(58,105,83,0.28); transform: translateY(-1px); }
     .login-submit:active { transform: translateY(0); }
 
-    /* Demo fill button */
-    .demo-btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: none; border: 1.5px solid var(--garis); border-radius: 10px;
-      font-size: 0.76rem; font-weight: 600; color: var(--teks-redup); font-family: var(--font-utama);
-      padding: 6px 14px; cursor: pointer; transition: all 0.18s; margin-bottom: 16px;
-    }
-    .demo-btn:hover { border-color: var(--hijau); color: var(--hijau); background: var(--mint); }
 
     .login-divider { text-align: center; font-size: 0.81rem; color: var(--teks-redup); margin: 16px 0 0; }
     .login-divider a { color: var(--hijau); font-weight: 600; text-decoration: none; }
@@ -401,11 +395,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <p>Isi data profesi Anda untuk mendaftar. Pendaftaran memerlukan persetujuan Admin.</p>
       </div>
 
-      <!-- Demo Fill Button -->
-      <button type="button" class="demo-btn" onclick="isiDemo()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-        Isi Data Demo
-      </button>
 
       <?php if ($error): ?>
         <div class="login-alert error"><?= $error ?></div>
@@ -512,22 +501,6 @@ function togglePass(id, btn) {
   btn.textContent = isPass ? 'Sembunyikan' : 'Lihat';
 }
 
-function isiDemo() {
-  const demos = [
-    { nama: 'Siti Rahayu', gelar: 'dr.', email: 'dr.siti.rahayu@kliniksehat.id', spesialisasi: 'Dokter Gizi', institusi: 'Klinik Sehat Mandiri Jakarta', nomor_str: '3301020304050607', pass: 'Demo@12345' },
-    { nama: 'Budi Santoso', gelar: 'Ns.', email: 'budi.santoso@rs-husada.co.id', spesialisasi: 'Ahli Gizi Klinis', institusi: 'RS Husada Utama Surabaya', nomor_str: '7809061234560011', pass: 'Demo@12345' },
-    { nama: 'Dewi Lestari', gelar: 'RD', email: 'dewi.lestari@univ-nutrisi.ac.id', spesialisasi: 'Dietisien', institusi: 'Universitas Indonesia – FK', nomor_str: '1122334455667788', pass: 'Demo@12345' },
-  ];
-  const d = demos[Math.floor(Math.random() * demos.length)];
-  document.getElementById('nama').value = d.nama;
-  document.getElementById('gelar').value = d.gelar;
-  document.getElementById('email').value = 'demo.' + Date.now().toString().slice(-4) + '@test.id';
-  document.getElementById('spesialisasi').value = d.spesialisasi;
-  document.getElementById('institusi').value = d.institusi;
-  document.getElementById('nomor_str').value = d.nomor_str;
-  document.getElementById('password').value = d.pass;
-  document.getElementById('password2').value = d.pass;
-}
 
 // Hanya izinkan input angka di field STR
 document.getElementById('nomor_str').addEventListener('input', function() {

@@ -76,9 +76,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($aksi === 'hapus') {
         $id  = (int)($_POST['id'] ?? 0);
-        try {
-            $pdo->prepare('UPDATE menu_harian_item SET catatan_makan_id = NULL WHERE catatan_makan_id = ?')->execute([$id]);
-        } catch (Exception $e) {}
         $del = $pdo->prepare('DELETE FROM catatan_makan WHERE id = ? AND user_id = ?');
         $del->execute([$id, $uid]);
         $dihapus = $del->rowCount() > 0;

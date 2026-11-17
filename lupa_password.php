@@ -37,15 +37,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token_csrf  = $_POST['csrf_token'] ?? '';
     $email_input = strtolower(trim($_POST['email'] ?? ''));
 
+    // 1. Pembatasan Waktu (Rate Limiting Cooldown 60 detik)
+    $waktu_terakhir = $_SESSION['last_reset_request_time'] ?? 0;
+    $jeda_detik     = 60;
+    $sisa_waktu     = $jeda_detik - (time() - $waktu_terakhir);
+
     if (!csrf_valid($token_csrf, 'csrf_token_lupa_pass')) {
         $error = 'Sesi formulir kedaluwarsa. Silakan muat ulang halaman.';
+    } elseif ($sisa_waktu > 0) {
+        $error = "Permintaan terlalu sering. Mohon tunggu {$sisa_waktu} detik sebelum mengirim permintaan baru.";
     } elseif ($email_input === '' || !filter_var($email_input, FILTER_VALIDATE_EMAIL)) {
         $error = 'Harap masukkan alamat email yang valid.';
+    } elseif (!validasi_domain_email($email_input)) {
+        $error = 'Domain email tidak ditemukan atau tidak aktif menerima email.';
     } else {
+        // Catat waktu permintaan untuk rate limiting
+        $_SESSION['last_reset_request_time'] = time();
+
         // Cari user di database
         $st = $pdo->prepare("SELECT id, nama, email, role FROM users WHERE LOWER(email) = ?");
         $st->execute([$email_input]);
         $user = $st->fetch();
+
+        $kirim_berhasil = true;
 
         if ($user) {
             // Buat token acak yang aman (64 hex characters)
@@ -62,18 +76,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $link_reset = base_url('reset_password.php?token=' . $token_reset);
 
-            // Kirim email via SMTP PHPMailer
+            // Kirim email via Brevo REST API
             $hasil_kirim = kirim_email_reset($user['email'], $user['nama'], $link_reset);
 
-            if ($hasil_kirim['sukses']) {
-                $email_terkirim = true;
-                $pesan = 'Tautan reset kata sandi telah berhasil dikirimkan ke <strong>' . h($user['email']) . '</strong>. Silakan periksa Kotak Masuk (Inbox) atau folder Spam email Anda.';
-            } else {
+            if (!$hasil_kirim['sukses']) {
+                $kirim_berhasil = false;
                 $error = 'Gagal mengirim email: ' . h($hasil_kirim['error']);
             }
-        } else {
-            // Email tidak ditemukan
-            $error = 'Email (' . h($email_input) . ') belum terdaftar di sistem Calorie Lab.';
+        }
+
+        // Pesan Netral Standar Industri (Anti-Enumeration):
+        // Jika user tidak ada di database, tetap tampilkan pesan sukses yang sama
+        // agar pihak luar tidak bisa menebak daftar akun di sistem Anda.
+        if ($kirim_berhasil) {
+            $email_terkirim = true;
+            $pesan = 'Jika alamat email <strong>' . h($email_input) . '</strong> terdaftar di Calorie Lab, tautan pemulihan kata sandi telah dikirimkan. Silakan periksa Kotak Masuk (Inbox) atau folder Spam email Anda.';
         }
     }
 }
