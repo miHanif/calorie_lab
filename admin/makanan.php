@@ -25,20 +25,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($aksi === 'hapus') {
         $id_hapus = (int)($_POST['id'] ?? 0);
         if ($id_hapus > 0) {
-            try {
-                $pdo->beginTransaction();
-                // Bersihkan relasi kategori dan catatan gizi terkait
-                $pdo->prepare("DELETE FROM menu_kategori WHERE menu_id = ?")->execute([$id_hapus]);
-                $pdo->prepare("DELETE FROM catatan_gizi WHERE menu_id = ?")->execute([$id_hapus]);
-                $st_del = $pdo->prepare("DELETE FROM menu_diet WHERE id = ?");
-                $st_del->execute([$id_hapus]);
-                $pdo->commit();
-                $_SESSION['pesan_admin'] = 'Menu makanan berhasil dihapus dari basis data.';
-                $_SESSION['pesan_admin_tipe'] = 'sukses';
-            } catch (Exception $e) {
-                $pdo->rollBack();
-                $_SESSION['pesan_admin'] = 'Gagal menghapus menu makanan: data masih terhubung dengan riwayat konsumsi pengguna.';
-                $_SESSION['pesan_admin_tipe'] = 'error';
+            // Cek apakah menu sudah pernah dipakai dalam riwayat catatan konsumsi pengguna
+            $st_cek = $pdo->prepare("SELECT COUNT(*) FROM catatan_makan WHERE menu_id = ?");
+            $st_cek->execute([$id_hapus]);
+            $jml_terpakai = (int)$st_cek->fetchColumn();
+
+            if ($jml_terpakai > 0) {
+                // JALAN TENGAH (SOFT DELETE / NONAKTIFKAN):
+                // Blokir penghapusan fisik agar riwayat catatan makan pengguna tidak terhapus (mencegah bug D-03).
+                // Lepaskan relasi kategori sehingga menu otomatis hilang dari katalog rekomendasi diet pengguna baru.
+                try {
+                    $pdo->prepare("DELETE FROM menu_kategori WHERE menu_id = ?")->execute([$id_hapus]);
+                    $_SESSION['pesan_admin'] = "Penghapusan fisik diblokir demi keamanan data: Menu ini telah tercatat sebanyak {$jml_terpakai} kali di riwayat konsumsi pengguna. Menu berhasil dinonaktifkan dari katalog rekomendasi tanpa merusak riwayat pengguna.";
+                    $_SESSION['pesan_admin_tipe'] = 'sukses';
+                } catch (Exception $e) {
+                    $_SESSION['pesan_admin'] = 'Gagal menonaktifkan menu makanan.';
+                    $_SESSION['pesan_admin_tipe'] = 'error';
+                }
+            } else {
+                // Menu BELUM PERNAH dipakai siapa pun: Aman untuk dihapus permanen dari basis data
+                try {
+                    $pdo->beginTransaction();
+                    $pdo->prepare("DELETE FROM menu_kategori WHERE menu_id = ?")->execute([$id_hapus]);
+                    $pdo->prepare("DELETE FROM catatan_gizi WHERE menu_id = ?")->execute([$id_hapus]);
+                    $st_del = $pdo->prepare("DELETE FROM menu_diet WHERE id = ?");
+                    $st_del->execute([$id_hapus]);
+                    $pdo->commit();
+                    $_SESSION['pesan_admin'] = 'Menu makanan berhasil dihapus permanen dari basis data.';
+                    $_SESSION['pesan_admin_tipe'] = 'sukses';
+                } catch (Exception $e) {
+                    $pdo->rollBack();
+                    $_SESSION['pesan_admin'] = 'Gagal menghapus menu makanan: ' . h($e->getMessage());
+                    $_SESSION['pesan_admin_tipe'] = 'error';
+                }
             }
         }
         header('Location: ' . base_url('admin/makanan.php'));
@@ -175,6 +194,7 @@ $sql = "
     SELECT md.*,
            u.nama AS pembuat_nama,
            u.gelar AS pembuat_gelar,
+           (SELECT COUNT(*) FROM catatan_makan cm WHERE cm.menu_id = md.id) AS total_dikonsumsi,
            (SELECT cg.status FROM catatan_gizi cg WHERE cg.menu_id = md.id ORDER BY cg.id DESC LIMIT 1) AS status_catatan,
            (SELECT pu.nama FROM catatan_gizi cg JOIN users pu ON pu.id = cg.pakar_id WHERE cg.menu_id = md.id ORDER BY cg.id DESC LIMIT 1) AS reviewer_nama,
            (SELECT pu.gelar FROM catatan_gizi cg JOIN users pu ON pu.id = cg.pakar_id WHERE cg.menu_id = md.id ORDER BY cg.id DESC LIMIT 1) AS reviewer_gelar,
@@ -394,7 +414,13 @@ include BASE_DIR . 'includes/header.php';
                   Edit
                 </button>
 
-                <form method="post" action="<?= base_url('admin/makanan.php') ?>" style="display: inline; margin: 0;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus menu \'<?= h(addslashes($m['nama_menu'])) ?>\' dari sistem?');">
+                <?php
+                $jml_pakai = (int)($m['total_dikonsumsi'] ?? 0);
+                $pesan_konfirmasi = $jml_pakai > 0
+                    ? "PERINGATAN: Menu ini telah tercatat {$jml_pakai} kali dalam riwayat konsumsi pengguna.\\n\\nPenghapusan fisik akan diblokir dan menu akan dinonaktifkan dari katalog rekomendasi agar riwayat pengguna tetap aman.\\n\\nLanjutkan penonaktifan?"
+                    : "Apakah Anda yakin ingin menghapus permanen menu \'" . h(addslashes($m['nama_menu'])) . "\'?";
+                ?>
+                <form method="post" action="<?= base_url('admin/makanan.php') ?>" style="display: inline; margin: 0;" onsubmit="return confirm('<?= $pesan_konfirmasi ?>');">
                   <input type="hidden" name="csrf_token" value="<?= h($csrf) ?>">
                   <input type="hidden" name="aksi" value="hapus">
                   <input type="hidden" name="id" value="<?= $m['id'] ?>">

@@ -109,6 +109,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->beginTransaction();
             try {
                 if ($id_menu > 0) {
+                    // Verifikasi kepemilikan menu sebelum update & reset kategori
+                    $cek_milik = $pdo->prepare("SELECT id FROM menu_diet WHERE id = ? AND pakar_id = ?");
+                    $cek_milik->execute([$id_menu, $pakar_id]);
+                    if (!$cek_milik->fetch()) {
+                        throw new Exception("Akses ditolak: Menu makanan tidak ditemukan atau bukan milik Anda.");
+                    }
+
                     $st_up = $pdo->prepare("
                         UPDATE menu_diet
                         SET nama_menu = ?, waktu_makan = ?, kalori = ?, berat_gram = ?, takaran_saji = ?, harga = ?, vegetarian = ?, deskripsi = ?
@@ -155,22 +162,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // 4. Hapus Menu Makanan Milik Pakar
+    // 4. Hapus Menu Makanan Milik Pakar (Perbaikan D-04: Cek Kepemilikan & Integritas Data)
     if ($aksi === 'hapus_menu_pakar') {
         $id_hapus = (int)($_POST['id_menu'] ?? 0);
         if ($id_hapus > 0) {
-            try {
-                $pdo->beginTransaction();
-                $pdo->prepare("DELETE FROM menu_kategori WHERE menu_id = ?")->execute([$id_hapus]);
-                $pdo->prepare("DELETE FROM catatan_gizi WHERE menu_id = ? AND pakar_id = ?")->execute([$id_hapus, $pakar_id]);
-                $pdo->prepare("DELETE FROM menu_diet WHERE id = ? AND pakar_id = ?")->execute([$id_hapus, $pakar_id]);
-                $pdo->commit();
-                $_SESSION['pesan_pakar_menu'] = 'Menu makanan berhasil dihapus.';
-                $_SESSION['pesan_pakar_menu_tipe'] = 'sukses';
-            } catch (Exception $e) {
-                $pdo->rollBack();
-                $_SESSION['pesan_pakar_menu'] = 'Gagal menghapus menu makanan.';
+            // 1. Verifikasi kepemilikan menu terlebih dahulu (Mencegah Pakar B menghapus kategori Pakar A)
+            $st_milik = $pdo->prepare("SELECT id, nama_menu FROM menu_diet WHERE id = ? AND pakar_id = ?");
+            $st_milik->execute([$id_hapus, $pakar_id]);
+            $menu_milik = $st_milik->fetch();
+
+            if (!$menu_milik) {
+                $_SESSION['pesan_pakar_menu'] = 'Akses ditolak: Menu makanan tidak ditemukan atau bukan milik Anda.';
                 $_SESSION['pesan_pakar_menu_tipe'] = 'error';
+                header('Location: ' . base_url('pakar/menu.php'));
+                exit;
+            }
+
+            // 2. Cek apakah menu sudah pernah dicatat oleh pengguna (Proteksi Data Pengguna)
+            $st_cek = $pdo->prepare("SELECT COUNT(*) FROM catatan_makan WHERE menu_id = ?");
+            $st_cek->execute([$id_hapus]);
+            $jml_pakai = (int)$st_cek->fetchColumn();
+
+            if ($jml_pakai > 0) {
+                // Menu pernah dipakai: Nonaktifkan relasi kategori agar tidak direkomendasikan lagi ke pengguna baru
+                try {
+                    $pdo->prepare("DELETE FROM menu_kategori WHERE menu_id = ?")->execute([$id_hapus]);
+                    $_SESSION['pesan_pakar_menu'] = "Menu <strong>" . h($menu_milik['nama_menu']) . "</strong> berhasil dinonaktifkan dari katalog rekomendasi (data riwayat konsumsi {$jml_pakai} pengguna tetap terjaga aman).";
+                    $_SESSION['pesan_pakar_menu_tipe'] = 'sukses';
+                } catch (Exception $e) {
+                    $_SESSION['pesan_pakar_menu'] = 'Gagal memproses penonaktifan menu makanan.';
+                    $_SESSION['pesan_pakar_menu_tipe'] = 'error';
+                }
+            } else {
+                // Belum pernah dipakai pengguna: Aman dihapus permanen
+                try {
+                    $pdo->beginTransaction();
+                    $pdo->prepare("DELETE FROM menu_kategori WHERE menu_id = ?")->execute([$id_hapus]);
+                    $pdo->prepare("DELETE FROM catatan_gizi WHERE menu_id = ? AND pakar_id = ?")->execute([$id_hapus, $pakar_id]);
+                    $pdo->prepare("DELETE FROM menu_diet WHERE id = ? AND pakar_id = ?")->execute([$id_hapus, $pakar_id]);
+                    $pdo->commit();
+                    $_SESSION['pesan_pakar_menu'] = 'Menu makanan berhasil dihapus permanen dari basis data.';
+                    $_SESSION['pesan_pakar_menu_tipe'] = 'sukses';
+                } catch (Exception $e) {
+                    $pdo->rollBack();
+                    $_SESSION['pesan_pakar_menu'] = 'Gagal menghapus menu makanan.';
+                    $_SESSION['pesan_pakar_menu_tipe'] = 'error';
+                }
             }
         }
         header('Location: ' . base_url('pakar/menu.php'));

@@ -9,6 +9,19 @@ if (isset($_SESSION['user_id'])) {
     else                     { header('Location: ' . base_url('dashboard.php'));   exit; }
 }
 
+// ── Pastikan tabel login_attempts tersedia (auto-migrate) ─────────────────
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS login_attempts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        ip_address VARCHAR(45) NOT NULL,
+        email VARCHAR(191) NOT NULL,
+        attempt_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_ip (ip_address),
+        INDEX idx_email (email),
+        INDEX idx_time (attempt_time)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+} catch (Exception $e) {}
+
 $error = '';
 $pesan = $_SESSION['pesan'] ?? '';
 unset($_SESSION['pesan']);
@@ -19,9 +32,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = $_POST['csrf_token'] ?? '';
     $email = strtolower(trim($_POST['email'] ?? ''));
     $pass  = $_POST['password'] ?? '';
+    $ip_pengguna = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
+    // ── Batasan Keamanan Anti-Brute Force (Maksimal 5x gagal, kunci 15 menit) ──
+    $batas_maksimal = 5;
+    $menit_kunci    = 15;
+    $total_gagal    = 0;
+    $terkunci       = false;
+    $sisa_menit     = 0;
+
+    try {
+        // Bersihkan percobaan yang sudah kedaluwarsa (> 15 menit)
+        $pdo->prepare("DELETE FROM login_attempts WHERE attempt_time < NOW() - INTERVAL ? MINUTE")->execute([$menit_kunci]);
+
+        // Hitung total kegagalan per IP atau Email dalam kurun waktu 15 menit
+        $st_cek = $pdo->prepare("
+            SELECT COUNT(*), MAX(attempt_time) 
+            FROM login_attempts 
+            WHERE (ip_address = ? OR (email != '' AND email = ?)) 
+              AND attempt_time > NOW() - INTERVAL ? MINUTE
+        ");
+        $st_cek->execute([$ip_pengguna, $email, $menit_kunci]);
+        $row_gagal = $st_cek->fetch(PDO::FETCH_NUM);
+        $total_gagal = (int)($row_gagal[0] ?? 0);
+        $waktu_terakhir = $row_gagal[1] ?? null;
+
+        if ($total_gagal >= $batas_maksimal && $waktu_terakhir) {
+            $detik_lalu = time() - strtotime($waktu_terakhir);
+            $detik_sisa = max(1, ($menit_kunci * 60) - $detik_lalu);
+            $sisa_menit = (int)ceil($detik_sisa / 60);
+            $terkunci   = true;
+        }
+    } catch (Exception $e) {
+        // Fallback berbasis sesi jika terjadi kendala sementara pada database
+        $sess_attempts = $_SESSION['login_failed_attempts'] ?? 0;
+        $sess_time     = $_SESSION['login_failed_time'] ?? 0;
+        if ($sess_attempts >= $batas_maksimal && (time() - $sess_time) < ($menit_kunci * 60)) {
+            $sisa_menit = (int)ceil((($menit_kunci * 60) - (time() - $sess_time)) / 60);
+            $terkunci   = true;
+        } elseif ((time() - $sess_time) >= ($menit_kunci * 60)) {
+            $_SESSION['login_failed_attempts'] = 0;
+        }
+    }
 
     if (!csrf_valid($token, 'csrf_token_login')) {
         $error = 'Sesi formulir kedaluwarsa. Silakan muat ulang halaman.';
+    } elseif ($terkunci) {
+        $error = "Terlalu banyak percobaan login yang gagal. Akun/perangkat Anda diblokir sementara demi keamanan. Silakan coba lagi dalam {$sisa_menit} menit.";
     } elseif ($email === '' || $pass === '') {
         $error = 'Harap isi email dan kata sandi.';
     } else {
@@ -30,6 +87,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $q->fetch();
 
         if ($user && password_verify($pass, $user['password_hash'])) {
+            // Login Berhasil: Bersihkan catatan kegagalan untuk IP & Email ini
+            try {
+                $pdo->prepare("DELETE FROM login_attempts WHERE ip_address = ? OR email = ?")->execute([$ip_pengguna, $email]);
+            } catch (Exception $e) {}
+            unset($_SESSION['login_failed_attempts'], $_SESSION['login_failed_time']);
+
             // Cek status akun untuk role pakar
             if ($user['role'] === 'pakar') {
                 $status = $user['status_akun'] ?? 'aktif';
@@ -59,7 +122,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
         } else {
-            $error = 'Email atau kata sandi tidak cocok.';
+            // Login Gagal: Catat kegagalan ke database & sesi
+            try {
+                $pdo->prepare("INSERT INTO login_attempts (ip_address, email) VALUES (?, ?)")->execute([$ip_pengguna, $email]);
+            } catch (Exception $e) {}
+            $_SESSION['login_failed_attempts'] = ($_SESSION['login_failed_attempts'] ?? 0) + 1;
+            $_SESSION['login_failed_time']     = time();
+
+            $percobaan_ke    = $total_gagal + 1;
+            $sisa_kesempatan = $batas_maksimal - $percobaan_ke;
+
+            if ($sisa_kesempatan > 0) {
+                $error = "Email atau kata sandi tidak cocok. Sisa percobaan: {$sisa_kesempatan} kali lagi sebelum akun dikunci sementara.";
+            } else {
+                $error = "Terlalu banyak percobaan login yang gagal. Akun/perangkat Anda diblokir sementara selama {$menit_kunci} menit demi keamanan.";
+            }
         }
     }
 }
