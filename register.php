@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $cek->execute([$email]);
 
         if ($cek->fetch()) {
-            $error = 'Email ini sudah terdaftar. Silakan langsung masuk ke akun Anda.';
+            $error = 'Alamat email ini sudah terdaftar di sistem. Silakan gunakan email lain untuk mendaftar, atau masuk melalui halaman login jika ini email Anda.';
         } else {
             $simpan = $pdo->prepare("INSERT INTO users (nama, email, password_hash, role) VALUES (?, ?, ?, 'user')");
             $simpan->execute([$nama, $email, password_hash($pass, PASSWORD_DEFAULT)]);
